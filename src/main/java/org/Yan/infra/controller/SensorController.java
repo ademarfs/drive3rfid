@@ -71,4 +71,33 @@ public class SensorController {
         }
         return ResponseEntity.ok(resultados);
     }
+
+    @GetMapping("/testar-todos/{tagId}")
+    public ResponseEntity<Object> testarTodosSensoresComTag(@PathVariable String tagId) {
+        log.info("Testando todos os sensores cadastrados para a tag {}", tagId);
+        var sensores = configService.listarSensores();
+        if (sensores.isEmpty()) {
+            return ResponseEntity.badRequest().body("Nenhum sensor cadastrado. Use POST /sensor/cadastrar primeiro.");
+        }
+        var resultados = new java.util.HashMap<String, Object>();
+        for (var sensor : sensores) {
+            try {
+                var tag = service.GetById(tagId, sensor.getIp(), sensor.getPorta());
+                resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
+                    java.util.Map.of(
+                        "status", "OK",
+                        "tagEncontrada", tag != null,
+                        "tag", tag
+                    ));
+            } catch (Exception e) {
+                resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
+                    java.util.Map.of(
+                        "status", "ERRO",
+                        "mensagem", e.getMessage()
+                    ));
+            }
+        }
+        return ResponseEntity.ok(resultados);
+    }
+
 }
