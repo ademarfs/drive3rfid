@@ -16,5 +16,21 @@ services:
       timeout: 3s
       retries: 10
 
+  sensor-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sensor-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - APP_PROFILE=prod
+      - SENSORS_FILE=/app/config/sensors.json
+    volumes:
+      - ./src/main/resources/sensors.json:/app/config/sensors.json:ro
+    restart: unless-stopped
+
 volumes:
   sensor_pgdata:

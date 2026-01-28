@@ -18,6 +18,11 @@ public class SensorConfigService {
     private List<SensorDTO> sensores = Collections.emptyList();
 
     public SensorConfigService() {
+        String external = System.getenv("SENSORS_FILE");
+        if (external != null && !external.isBlank()) {
+            loadSensorsFromFileSystem(external);
+            if (!sensores.isEmpty()) return;
+        }
         loadSensorsFromClasspath();
     }
 
@@ -28,6 +33,17 @@ public class SensorConfigService {
             log.info("Loaded {} sensors from sensors.json", sensores.size());
         } catch (Exception e) {
             log.warn("Could not load sensors.json from classpath, continuing with empty list", e);
+            sensores = Collections.emptyList();
+        }
+    }
+
+    private void loadSensorsFromFileSystem(String path) {
+        try (InputStream is = new java.io.FileInputStream(path)) {
+            ObjectMapper mapper = new ObjectMapper();
+            sensores = mapper.readValue(is, new TypeReference<List<SensorDTO>>(){});
+            log.info("Loaded {} sensors from external file {}", sensores.size(), path);
+        } catch (Exception e) {
+            log.warn("Could not load sensors from file {}", path, e);
             sensores = Collections.emptyList();
         }
     }
