@@ -4,6 +4,7 @@ import org.Yan.driver.WirelessReader;
 import org.Yan.exceptions.apiExceptions.TagListNotFoundException;
 import org.Yan.exceptions.apiExceptions.TagNotFoundException;
 import org.Yan.infra.DTO.TagDto;
+import org.Yan.infra.DTO.SensorDTO;
 import org.springframework.stereotype.Service;
 
 import java.net.InetSocketAddress;
@@ -17,6 +18,12 @@ import java.util.Set;
 @Service
 public class SensorService implements ISensorService{
     private static final int CONNECTION_TIMEOUT_MS = 5000; // 5 segundos
+
+    private final SensorConfigService configService;
+
+    public SensorService(SensorConfigService configService) {
+        this.configService = configService;
+    }
 
     @Override
     public List<TagDto> GetAll(String ip, int port) {
@@ -36,8 +43,9 @@ public class SensorService implements ISensorService{
                 if(tags.isEmpty()){
                     throw new TagListNotFoundException(ip);
                 }
+                String setor = resolveSetor(ip, port);
                 tags.forEach(tag -> {
-                    response.add(new TagDto(tag, "Retifica Mecânica"));
+                    response.add(new TagDto(tag, setor));
                 });
             } finally {
                 if (socket != null && !socket.isClosed()) {
@@ -78,7 +86,8 @@ public class SensorService implements ISensorService{
                 if(tag.isEmpty()){
                      throw new TagNotFoundException(tagId);
                 }
-                findedTag = new TagDto(tag.get(),"Setor 01");
+                String setor = resolveSetor(ip, port);
+                findedTag = new TagDto(tag.get(), setor);
             } finally {
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
@@ -105,5 +114,18 @@ public class SensorService implements ISensorService{
     @Override
     public TagDto GetById(String tagId, String ip, int port, String ipLocal) {
         return GetById(tagId, ip, port);
+    }
+
+    private String resolveSetor(String ip, int port) {
+        try {
+            List<SensorDTO> sensores = configService.listarSensores();
+            for (SensorDTO s : sensores) {
+                if (s.getIp() != null && s.getIp().equals(ip) && s.getPorta() == port) {
+                    if (s.getSetor() != null && !s.getSetor().isBlank()) return s.getSetor();
+                    if (s.getNome() != null && !s.getNome().isBlank()) return s.getNome();
+                }
+            }
+        } catch (Exception ignored) {}
+        return "Setor Desconhecido";
     }
 }

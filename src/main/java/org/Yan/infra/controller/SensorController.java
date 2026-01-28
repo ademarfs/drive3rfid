@@ -65,6 +65,7 @@ public class SensorController {
                 resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
                     java.util.Map.of(
                         "status", "ERRO",
+                        "setor", sensor.getSetor(),
                         "mensagem", e.getMessage()
                     ));
             }
@@ -93,6 +94,7 @@ public class SensorController {
                 resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
                     java.util.Map.of(
                         "status", "ERRO",
+                        "setor", sensor.getSetor(),
                         "mensagem", e.getMessage()
                     ));
             }
