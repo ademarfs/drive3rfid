@@ -9,6 +9,7 @@ public class SensorDTO {
     private int porta;
     private String nome;
     private String ipLocal;
+    private String setor;
 
     public SensorDTO() {}
 
@@ -16,6 +17,13 @@ public class SensorDTO {
         this.ip = ip;
         this.porta = porta;
         this.nome = nome;
+    }
+
+    public SensorDTO(String ip, int porta, String nome, String setor) {
+        this.ip = ip;
+        this.porta = porta;
+        this.nome = nome;
+        this.setor = setor;
     }
 
     public String getIp() {
@@ -49,5 +57,13 @@ public class SensorDTO {
 
     public void setIpLocal(String ipLocal) {
         this.ipLocal = ipLocal;
+    }
+
+    public String getSetor() {
+        return setor;
+    }
+
+    public void setSetor(String setor) {
+        this.setor = setor;
     }
 }

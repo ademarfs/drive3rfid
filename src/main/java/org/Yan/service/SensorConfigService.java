@@ -35,4 +35,12 @@ public class SensorConfigService {
     public List<SensorDTO> listarSensores() {
         return sensores;
     }
+
+    public String buscarSetorPorIpEPorta(String ip, int port) {
+        return sensores.stream()
+                .filter(sensor -> sensor.getIp().equals(ip) && sensor.getPorta() == port)
+                .map(SensorDTO::getSetor)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Setor não encontrado para o IP: " + ip + " e porta: " + port));
+    }
 }
