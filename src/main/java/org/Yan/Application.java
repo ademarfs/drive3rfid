@@ -3,16 +3,11 @@ package org.Yan;
 import org.Yan.driver.WirelessReader;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 
-import javax.swing.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -33,10 +28,6 @@ public class Application {
 
                 try {
                     while (true) {
-
-                        System.out.println("Lista de comando \n" + "1 - Obter informações do sensor \n" +
-                                "2 - Testar Leitura de Tags \n" +
-                                "3 - Configurar Wifi do Sensor \n");
                         int cmd = scanner.nextInt();
                         scanner.nextLine();
                         ;
@@ -58,8 +49,6 @@ public class Application {
             }
         };
     }
-
-
 
     private static void ListarTags(Scanner scanner){
         Socket socket = AbrirSocket(scanner);

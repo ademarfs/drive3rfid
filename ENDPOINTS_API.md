@@ -1,147 +1,154 @@
 # 📡 API de Sensores RFID - Endpoints
 
-## 🔧 Gerenciamento de Sensores
+## 📋 Endpoints Disponíveis
 
-### 1. Cadastrar Sensor
-**POST** `/sensor/cadastrar`
-
-Cadastra um novo sensor no sistema.
-
-**Body (JSON):**
-```json
-{
-  "ip": "192.168.2.1",
-  "porta": 8000,
-  "nome": "Sensor Principal",
-  "ipLocal": "192.168.2.2"
-}
-```
-- `ipLocal` (opcional): IP **desta máquina** na interface que alcança o sensor. Use quando houver **vários adaptadores de rede** (cada sensor em uma rede).
-
-**Exemplo:**
-```bash
-curl -X POST http://localhost:8080/sensor/cadastrar \
-  -H "Content-Type: application/json" \
-  -d '{"ip":"192.168.2.1","porta":8000,"nome":"Sensor Principal"}'
-```
-
-**Resposta:** `201 Created`
-```json
-{
-  "ip": "192.168.2.1",
-  "porta": 8000,
-  "nome": "Sensor Principal"
-}
-```
+A aplicação fornece 2 endpoints para buscar tags de sensores RFID:
 
 ---
 
-### 2. Listar Sensores
-**GET** `/sensor/listar`
+## 1. Buscar Todas as Tags de um Sensor
 
-Lista todos os sensores cadastrados.
+**GET** `/sensor/tags/{ip}/{porta}`
 
-**Exemplo:**
-```bash
-curl http://localhost:8080/sensor/listar
-```
+Retorna todas as tags RFID detectadas por um sensor específico.
 
-**Resposta:** `200 OK`
-```json
-[
-  {
-    "ip": "192.168.2.1",
-    "porta": 8000,
-    "nome": "Sensor Principal"
-  },
-  {
-    "ip": "192.168.2.2",
-    "porta": 8000,
-    "nome": "Sensor Secundário"
-  }
-]
-```
+### Parâmetros da URL
 
----
+| Parâmetro | Tipo    | Descrição |
+|-----------|---------|-----------|
+| `ip`      | string  | IP do sensor RFID (ex: 192.168.2.1) |
+| `porta`   | integer | Porta do sensor (ex: 8000) |
 
-### 3. Remover Sensor
-**DELETE** `/sensor/{ip}/{porta}`
+### Exemplo
 
-Remove um sensor cadastrado.
-
-**Exemplo:**
-```bash
-curl -X DELETE http://localhost:8080/sensor/192.168.2.1/8000
-```
-
-**Resposta:** `204 No Content` (sucesso) ou `404 Not Found` (sensor não encontrado)
-
----
-
-## 📋 Leitura de Tags
-
-### 4. Buscar Todas as Tags (com parâmetros)
-**GET** `/sensor/tags?ip={ip}&porta={porta}&ipLocal={ipLocal}`
-
-Busca todas as tags de um sensor específico. Use `ipLocal` quando tiver vários adaptadores.
-
-**Exemplo:**
-```bash
-curl "http://localhost:8080/sensor/tags?ip=192.168.2.1&porta=8000"
-curl "http://localhost:8080/sensor/tags?ip=192.168.2.5&porta=9000&ipLocal=192.168.2.10"
-```
-
-**Resposta:** `200 OK`
-```json
-[
-  {
-    "id": "E20012345678901234567890",
-    "setor": "Retifica Mecânica"
-  }
-]
-```
-
----
-
-### 5. Buscar Todas as Tags (path variables)
-**GET** `/sensor/tags/{ip}/{porta}?ipLocal={ipLocal}`
-
-Busca todas as tags de um sensor. Use `?ipLocal=` quando tiver vários adaptadores.
-
-**Exemplo:**
 ```bash
 curl http://localhost:8080/sensor/tags/192.168.2.1/8000
-curl "http://localhost:8080/sensor/tags/192.168.2.5/9000?ipLocal=192.168.2.10"
 ```
 
-**Resposta:** `200 OK` (mesmo formato do endpoint anterior)
+### Resposta (200 OK)
+
+```json
+[
+  {
+    "tag": "E20012345678901234567890",
+    "setor": "Setor 01"
+  },
+  {
+    "tag": "E20098765432109876543210",
+    "setor": "Setor 01"
+  }
+]
+```
 
 ---
 
-### 6. Buscar Tag Específica
-**GET** `/sensor/tags/{ip}/{porta}/{tagId}?ipLocal={ipLocal}`
+## 2. Buscar uma Tag Específica
 
-Busca uma tag específica em um sensor. Use `?ipLocal=` quando tiver vários adaptadores.
+**GET** `/sensor/tags/{ip}/{porta}/{tagId}`
 
-**Exemplo:**
+Retorna uma tag específica do sensor, se encontrada.
+
+### Parâmetros da URL
+
+| Parâmetro | Tipo    | Descrição |
+|-----------|---------|-----------|
+| `ip`      | string  | IP do sensor RFID (ex: 192.168.2.1) |
+| `porta`   | integer | Porta do sensor (ex: 8000) |
+| `tagId`   | string  | ID da tag RFID (ex: E20012345678901234567890) |
+
+### Exemplo
+
 ```bash
 curl http://localhost:8080/sensor/tags/192.168.2.1/8000/E20012345678901234567890
-curl "http://localhost:8080/sensor/tags/192.168.2.5/9000/E20012345678901234567890?ipLocal=192.168.2.10"
 ```
 
-**Resposta:** `200 OK`
+### Resposta (200 OK)
+
 ```json
 {
-  "id": "E20012345678901234567890",
+  "tag": "E20012345678901234567890",
   "setor": "Setor 01"
 }
 ```
 
 ---
 
-## 📝 Notas
+## ❌ Respostas de Erro
 
-- Os sensores são armazenados em memória (não persistem após reiniciar o servidor)
-- O campo `nome` no cadastro de sensores é opcional
-- Todos os endpoints retornam JSON
-- CORS está habilitado para todas as origens (`*`)
+### 404 - Tag Não Encontrada
+
+Quando a tag solicitada não é encontrada no sensor:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Tag não encontrada",
+  "status": 404,
+  "detail": "Tag de Id: E20012345678901234567890 não encontrada no setor"
+}
+```
+
+### 404 - Lista de Tags Vazia
+
+Quando o sensor não retorna nenhuma tag:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Lista de tags não encontrada",
+  "status": 404,
+  "detail": "Nenhuma tag foi detectada pelo sensor"
+}
+```
+
+### 500 - Erro de Conexão com Sensor
+
+Quando não há conexão com o sensor:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Erro de conexão",
+  "status": 500,
+  "detail": "Timeout ao conectar ao sensor em 192.168.2.1:8000"
+}
+```
+
+---
+
+## 📌 Notas Importantes
+
+1. **Configuração de Sensores**: Os sensores devem estar cadastrados em `src/main/resources/sensors.json`
+2. **Setor Dinâmico**: O setor retornado é definido em `sensors.json`, não no código
+3. **Conectividade**: O sensor deve estar ligado e acessível na rede
+4. **Timeout**: Se o sensor não responder em 5 segundos, retorna erro
+
+---
+
+## 🔧 Estrutura do Sensor
+
+Cada sensor em `sensors.json` possui:
+
+```json
+{
+  "ip": "192.168.2.1",
+  "porta": 8000,
+  "nome": "sensor-1",
+  "setor": "Setor 01"
+}
+```
+
+---
+
+## 📝 Exemplo de Uso Completo
+
+```bash
+# Buscar todas as tags do sensor 1
+curl http://localhost:8080/sensor/tags/192.168.2.1/8000
+
+# Buscar uma tag específica
+curl http://localhost:8080/sensor/tags/192.168.2.1/8000/E20012345678901234567890
+
+# Buscar tags do sensor 2
+curl http://localhost:8080/sensor/tags/192.168.20.1/9000
+```

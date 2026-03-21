@@ -1,72 +1,198 @@
 # 🔍 Diagnóstico de Sensores
 
-## ✅ Verificações Realizadas
+## 📋 Visão Geral
 
-1. **Não há código de cadastro automático** - Verificado todo o código fonte
-2. **Todos os endpoints são dinâmicos** - Nenhum IP fixo nos controllers
-3. **SensorManagerService está limpo** - Não há inicialização automática
+Este documento ajuda a diagnosticar problemas com sensores RFID na aplicação.
 
-## 🧪 Como Verificar o Problema
+---
 
-### 1. Verificar Sensores Cadastrados
+## ✅ Verificar se a Aplicação Iniciou
+
+### 1. Confirmar que o servidor está rodando
+
 ```bash
-curl http://localhost:8080/sensor/listar
-```
-
-**Resultado esperado:** Lista vazia `[]` se nenhum sensor foi cadastrado manualmente.
-
-### 2. Verificar Logs do Servidor
-Ao iniciar o servidor, verifique os logs. Não deve aparecer nenhuma mensagem de cadastro automático.
-
-### 3. Cadastrar Sensores Manualmente
-```bash
-# Sensor 1 - Porta 8000
-curl -X POST http://localhost:8080/sensor/cadastrar \
-  -H "Content-Type: application/json" \
-  -d '{"ip":"192.168.2.1","porta":8000,"nome":"Sensor 1"}'
-
-# Sensor 2 - Porta 9000 (ou outro IP)
-curl -X POST http://localhost:8080/sensor/cadastrar \
-  -H "Content-Type: application/json" \
-  -d '{"ip":"192.168.2.1","porta":9000,"nome":"Sensor 2"}'
-```
-
-### 4. Verificar Novamente
-```bash
-curl http://localhost:8080/sensor/listar
-```
-
-Agora deve mostrar os 2 sensores cadastrados.
-
-### 5. Testar Cada Sensor Individualmente
-```bash
-# Sensor porta 8000
 curl http://localhost:8080/sensor/tags/192.168.2.1/8000
-
-# Sensor porta 9000
-curl http://localhost:8080/sensor/tags/192.168.2.1/9000
 ```
 
-## ⚠️ Possíveis Causas do Problema
+Se receber uma resposta, significa que o servidor está ativo.
 
-1. **Cache do navegador/cliente HTTP** - Limpe o cache ou use curl
-2. **Endpoint antigo sendo usado** - Certifique-se de usar os endpoints corretos:
-   - ✅ `/sensor/cadastrar` (POST)
-   - ✅ `/sensor/listar` (GET)
-   - ✅ `/sensor/tags/{ip}/{porta}` (GET)
-3. **Sensores em memória** - Os sensores são armazenados em memória, então ao reiniciar o servidor, todos os sensores são perdidos
+---
 
-## 🔧 Solução
+## ✅ Verificar Configuração de Sensores
 
-Se o problema persistir:
+### 1. Confirmar Sensores Cadastrados
 
-1. **Reinicie o servidor completamente**
-2. **Verifique os logs** ao iniciar - não deve haver cadastro automático
-3. **Cadastre os sensores manualmente** usando os endpoints
-4. **Use os endpoints corretos** para ler tags de cada sensor
+Os sensores devem estar em `src/main/resources/sensors.json`:
 
-## 📝 Nota Importante
+```bash
+cat src/main/resources/sensors.json
+```
 
-- **Não há cadastro automático** - Todos os sensores devem ser cadastrados manualmente via API
-- **Sensores são em memória** - Ao reiniciar o servidor, todos os sensores são perdidos
-- **Cada requisição é independente** - Não há estado compartilhado entre requisições
+Exemplo esperado:
+
+```json
+[
+  { "ip": "192.168.2.1",  "porta": 8000, "nome": "sensor-1", "setor": "Setor 01" },
+  { "ip": "192.168.20.1", "porta": 9000, "nome": "sensor-2", "setor": "Setor 02" },
+  { "ip": "192.168.3.1",  "porta": 8003, "nome": "sensor-3", "setor": "Setor 03" }
+]
+```
+
+### 2. Se Precisar Alterar `sensors.json`
+
+1. Edite o arquivo: `src/main/resources/sensors.json`
+2. **Importantes:** Recompile o projeto:
+   ```bash
+   mvn clean package
+   ```
+3. Reinicie a aplicação:
+   ```bash
+   java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
+   ```
+
+⚠️ Se não recompilar, o arquivo antigo dentro do JAR será usado!
+
+---
+
+## ✅ Diagnosticar Problemas de Conexão com Sensor
+
+### 1. Testar Ping ao Sensor
+
+```bash
+ping 192.168.2.1
+```
+
+Se o ping falhar:
+- Sensor pode estar desligado
+- Sensor pode não estar na mesma rede
+- Rede pode estar desconfigurada
+
+### 2. Testar Porta do Sensor
+
+```bash
+# Com netcat
+nc -zv 192.168.2.1 8000
+
+# Ou com telnet
+telnet 192.168.2.1 8000
+```
+
+Se a porta estiver **aberta**, verá: `succeeded`  
+Se a porta estiver **fechada**, verá: `refused` ou `timeout`
+
+### 3. Testar Sensor Diretamente
+
+```bash
+curl http://localhost:8080/sensor/tags/192.168.2.1/8000
+```
+
+Se receber erro, veja o tipo de erro abaixo.
+
+---
+
+## 🐛 Erros Comuns e Soluções
+
+### Erro: "Setor não encontrado para o IP"
+
+**Significa:** O IP e porta não estão em `sensors.json`
+
+**Solução:**
+1. Edite `src/main/resources/sensors.json`
+2. Adicione o sensor:
+   ```json
+   { "ip": "192.168.X.X", "porta": YYYY, "nome": "sensor-novo", "setor": "Setor X" }
+   ```
+3. **Recompile:** `mvn clean package`
+4. **Reinicie:** `java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar`
+
+---
+
+### Erro: "Timeout ao conectar ao sensor"
+
+**Significa:** Não consegue conectar ao sensor no tempo limite (5 segundos)
+
+**Causas comuns:**
+- Sensor está desligado
+- IP errado
+- Porta errada
+- Sensor não está na mesma rede
+- Firewall está bloqueando
+
+**Solução:**
+1. Verifique se o sensor está ligado
+2. Confirme IP e porta: `ping 192.168.2.1`
+3. Teste porta: `nc -zv 192.168.2.1 8000`
+4. Confirme dados em `sensors.json`
+
+---
+
+### Erro: "Conexão recusada pelo sensor"
+
+**Significa:** Sensor está online, mas a porta está fechada
+
+**Causas:**
+- Porta errada
+- Sensor não está escutando naquela porta
+- Firewall está bloqueando
+
+**Solução:**
+1. Confirme que a porta está correta em `sensors.json`
+2. Tente acessar o sensor diretamente pelo browser: `http://192.168.2.1`
+3. Verifique documentação do sensor
+
+---
+
+### Erro: "Tag não encontrada"
+
+**Significa:** A tag solicitada não existe no sensor
+
+**Solução:**
+1. Busque todas as tags: `curl http://localhost:8080/sensor/tags/192.168.2.1/8000`
+2. Verifique o ID correto
+3. Use o ID correto na busca
+
+---
+
+## 🔧 Checklist de Diagnóstico
+
+- [ ] Servidor está rodando? (porta 8080 acessível)
+- [ ] Sensores estão em `sensors.json`?
+- [ ] Sensor está ligado?
+- [ ] Sensor responde ao ping?
+- [ ] Porta do sensor está aberta? (nc -zv)
+- [ ] IP e porta estão corretos em `sensors.json`?
+- [ ] Você recompilou após alterar `sensors.json`?
+- [ ] Tag existe no sensor? (busque todas as tags)
+
+---
+
+## 📝 Logs do Servidor
+
+Ao iniciar, você verá nos logs:
+
+```
+INFO o.y.s.SensorConfigService - Loaded 3 sensors from sensors.json
+```
+
+Se aparecer "0 sensors", significa que `sensors.json` está vazio ou com erro de formatação JSON.
+
+---
+
+## 🆘 Ainda Não Funciona?
+
+Se tudo acima falhar:
+
+1. **Reinicie tudo:**
+   ```bash
+   mvn clean package
+   java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
+   ```
+
+2. **Verifique os logs** - procure por mensagens de erro
+
+3. **Teste manualmente:**
+   - Acesse o sensor pelo browser: `http://192.168.X.X`
+   - Use um cliente TCP separado para testar porta
+   - Verifique se há tags perto do sensor
+
+4. **Consulte documentação do sensor** - pode ter configurações específicas

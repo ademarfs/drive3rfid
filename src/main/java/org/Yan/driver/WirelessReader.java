@@ -133,8 +133,6 @@
                     send[i+1] = cmd[i]; sum += send[i+1];
                 }
 
-
-
                 sum = (byte)(~sum + 1);
                 send[send.length - 1] = sum;
 
