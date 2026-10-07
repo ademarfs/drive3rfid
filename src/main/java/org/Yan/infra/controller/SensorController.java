@@ -1,13 +1,11 @@
 package org.Yan.infra.controller;
 
 import org.Yan.infra.DTO.TagDto;
-import org.Yan.infra.DTO.SensorDTO;
 import org.Yan.service.ISensorService;
 import org.Yan.service.SensorManagerService;
 import org.Yan.service.SensorConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
