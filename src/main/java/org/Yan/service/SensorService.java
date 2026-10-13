@@ -50,6 +50,9 @@ public class SensorService implements ISensorService{
                 }
             }
 
+        } catch (TagListNotFoundException | TagNotFoundException e) {
+            // Repassa sem encapsular para que o ApiExceptionHandler retorne 404
+            throw e;
         } catch (SocketTimeoutException e) {
             throw new RuntimeException("Timeout ao conectar ao sensor em " + ip + ":" + port + 
                 ". Verifique se o sensor está ligado e acessível.", e);
@@ -90,6 +93,9 @@ public class SensorService implements ISensorService{
                     socket.close();
                 }
             }
+        } catch (TagListNotFoundException | TagNotFoundException e) {
+            // Repassa sem encapsular para que o ApiExceptionHandler retorne 404
+            throw e;
         } catch (SocketTimeoutException e) {
             throw new RuntimeException("Timeout ao conectar ao sensor em " + ip + ":" + port + 
                 ". Verifique se o sensor está ligado e acessível.", e);

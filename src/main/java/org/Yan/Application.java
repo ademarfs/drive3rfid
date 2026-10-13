@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.InputMismatchException;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 @SpringBootApplication
@@ -23,11 +24,15 @@ public class Application {
     @Bean
     public CommandLineRunner SensorCliRunner() {
         return args -> {
+            if (System.console() == null) {
+                System.out.println("CLI desativado (sem terminal interativo)");
+                return;
+            }
             System.out.println("CLI DO SENSOR ATIVO");
             try (var scanner = new Scanner(System.in)) {
 
-                try {
-                    while (true) {
+                while (true) {
+                    try {
                         int cmd = scanner.nextInt();
                         scanner.nextLine();
                         ;
@@ -38,13 +43,16 @@ public class Application {
                                 break;
                             }
                         }
+                    } catch (InputMismatchException e) {
+                        System.out.println("Falha na escrita: Por favor selecione um numero no menu");
+                        scanner.nextLine();
+                    } catch (NoSuchElementException e) {
+                        // Fim da entrada (EOF): encerra o CLI
+                        break;
+                    } catch (Exception e) {
+                        System.out.println("Erro de conexão!" + e.getMessage());
+                        e.printStackTrace();
                     }
-                } catch (InputMismatchException e) {
-                    System.out.println("Falha na escrita: Por favor selecione um numero no menu");
-                    scanner.nextLine();
-                } catch (Exception e) {
-                    System.out.println("Erro de conexão!" + e.getMessage());
-                    e.printStackTrace();
                 }
             }
         };

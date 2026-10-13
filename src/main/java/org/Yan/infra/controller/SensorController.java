@@ -48,29 +48,53 @@ public class SensorController {
 
     @GetMapping("/testar-todos")
     public ResponseEntity<Object> testarTodosSensores() {
-        log.info("Testando todos os sensores cadastrados simultaneamente");
+        log.info("Testando todos os sensores cadastrados em paralelo");
         var sensores = configService.listarSensores();
         if (sensores.isEmpty()) {
-            return ResponseEntity.badRequest().body("Nenhum sensor cadastrado. Use POST /sensor/cadastrar primeiro.");
+            return ResponseEntity.badRequest().body("Nenhum sensor cadastrado em sensors.json.");
         }
-        var resultados = new java.util.HashMap<String, Object>();
-        for (var sensor : sensores) {
-            try {
-                var tags = service.GetAll(sensor.getIp(), sensor.getPorta());
-                resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
-                    java.util.Map.of(
-                        "status", "OK",
-                        "tagsEncontradas", tags.size(),
-                        "tags", tags
-                    ));
-            } catch (Exception e) {
-                resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
-                    java.util.Map.of(
-                        "status", "ERRO",
-                        "mensagem", e.getMessage()
-                    ));
+        // Uma tarefa por sensor em um pool temporário; cada GetAll abre seu próprio Socket/WirelessReader
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(Math.min(sensores.size(), 8));
+        try {
+            var futuros = new java.util.ArrayList<java.util.concurrent.Future<List<TagDto>>>();
+            for (var sensor : sensores) {
+                futuros.add(pool.submit(() -> service.GetAll(sensor.getIp(), sensor.getPorta())));
             }
+            // Monta o resultado na thread da requisição, após aguardar todas as tarefas
+            var resultados = new java.util.HashMap<String, Object>();
+            for (int i = 0; i < sensores.size(); i++) {
+                var sensor = sensores.get(i);
+                try {
+                    var tags = getResultado(futuros.get(i));
+                    resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
+                        java.util.Map.of(
+                            "status", "OK",
+                            "tagsEncontradas", tags.size(),
+                            "tags", tags
+                        ));
+                } catch (Exception e) {
+                    resultados.put(sensor.getIp() + ":" + sensor.getPorta(),
+                        java.util.Map.of(
+                            "status", "ERRO",
+                            "mensagem", e.getMessage()
+                        ));
+                }
+            }
+            return ResponseEntity.ok(resultados);
+        } finally {
+            pool.shutdownNow();
         }
-        return ResponseEntity.ok(resultados);
+    }
+
+    // Aguarda a tarefa e devolve a exceção original lançada pelo GetAll (mesma mensagem de antes)
+    private static List<TagDto> getResultado(java.util.concurrent.Future<List<TagDto>> futuro) throws Exception {
+        try {
+            return futuro.get();
+        } catch (java.util.concurrent.ExecutionException e) {
+            if (e.getCause() instanceof Exception causa) {
+                throw causa;
+            }
+            throw e;
+        }
     }
 }
