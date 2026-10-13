@@ -78,3 +78,9 @@ Delegation:
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## 6. Contexto do projeto
+
+O contexto/handoff do projeto fica em `docs/CONTEXTO_PROJETO.md`: leia antes de começar e atualize ao final de cada sessão.
+
+@docs/CONTEXTO_PROJETO.md
