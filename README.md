@@ -20,10 +20,94 @@ mvn clean package
 
 ### Executar a Aplicação
 ```bash
-java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
+java -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
 ```
 
+As opções da JVM acima reduzem o uso de memória (~110 MB) para servidores com poucos recursos.
+
 A aplicação iniciará em: `http://localhost:8080`
+
+---
+
+## ▶️ Como Iniciar o Serviço
+
+### Pré-requisito: compilar
+O script de inicialização **não compila** o projeto. Compile antes de iniciar:
+```bash
+./mvnw clean package -DskipTests
+```
+
+> Sempre que editar `sensors.json`, **recompile e reinicie** o serviço (o arquivo fica dentro do JAR).
+
+### Opção 1 — Terminal (para testes)
+```bash
+./executar-servidor.sh
+```
+- Aguarde no log as mensagens `Started Application` e `Loaded N sensors` — a API está pronta.
+- O log mostra `CLI DO SENSOR ATIVO` (menu antigo): **não digite nada nesse terminal**.
+- Para parar: `Ctrl+C`. O serviço também para ao fechar o terminal.
+
+### Opção 2 — Segundo plano (nohup)
+```bash
+# Iniciar
+nohup ./executar-servidor.sh < /dev/null > servidor.log 2>&1 &
+
+# Acompanhar o log
+tail -f servidor.log
+
+# Parar
+pkill -f 'java .*SensorSerialYan'
+```
+- Continua rodando após fechar o terminal, mas **não inicia sozinho** quando o servidor é ligado.
+
+### Opção 3 — Serviço do sistema (systemd) — recomendado para o servidor
+Vantagens:
+- Inicia automaticamente quando o servidor é ligado
+- Reinicia sozinho em caso de falha (após 10 s)
+- Não precisa de ninguém logado
+
+1. Edite `deploy/sensor-rfid.service` e ajuste `User`, `WorkingDirectory` e `ExecStart` para o usuário e a pasta do projeto na máquina.
+2. Instale e ative:
+```bash
+sudo cp deploy/sensor-rfid.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now sensor-rfid
+```
+
+Comandos do dia a dia:
+
+| Ação | Comando |
+|------|---------|
+| Ver status | `systemctl status sensor-rfid` |
+| Ver logs (ao vivo) | `journalctl -u sensor-rfid -f` |
+| Parar | `sudo systemctl stop sensor-rfid` |
+| Iniciar | `sudo systemctl start sensor-rfid` |
+| Reiniciar (necessário após recompilar) | `sudo systemctl restart sensor-rfid` |
+| Não iniciar mais no boot | `sudo systemctl disable sensor-rfid` |
+
+### Verificar se está funcionando
+```bash
+# Testa todos os sensores (leva ~5–8 s por sensor)
+curl http://localhost:8080/sensor/testar-todos
+
+# Tags de um sensor
+curl http://localhost:8080/sensor/tags/<ip>/<porta>
+
+# Uso de memória (esperado: RSS ~110000 KB)
+ps -o pid,rss,nlwp,cmd -p $(pgrep -f 'java .*SensorSerialYan')
+```
+
+### Ajustar memória
+As opções da JVM podem ser trocadas pela variável `JAVA_OPTS`:
+```bash
+JAVA_OPTS="-Xmx128m -XX:+UseSerialGC" ./executar-servidor.sh
+```
+No systemd, adicione na seção `[Service]` de `deploy/sensor-rfid.service` (e reinstale com os passos da Opção 3):
+```ini
+Environment="JAVA_OPTS=-Xmx128m -XX:+UseSerialGC"
+```
+
+> **Nota:** ao rodar com nohup ou systemd, o log mostra uma vez `NoSuchElementException` logo após `CLI DO SENSOR ATIVO`. Isso é esperado e inofensivo — a API continua funcionando normalmente.
 
 ---
 
@@ -89,7 +173,7 @@ mvn clean package
 
 3. Execute novamente:
 ```bash
-java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
+java -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
 ```
 
 ---
@@ -203,7 +287,7 @@ curl http://localhost:8080/sensor/tags/192.168.2.1/8000/E20012345678901234567890
 1. **Recompile sempre** que alterar `sensors.json`:
    ```bash
    mvn clean package
-   java -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
+   java -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m -jar ./target/SensorSerialYan-1.0-SNAPSHOT.jar
    ```
 
 2. **O arquivo `sensors.json` é empacotado no JAR**:

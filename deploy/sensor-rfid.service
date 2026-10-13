@@ -1,0 +1,19 @@
+# Unidade systemd para a API RFID SensorSerialYan.
+# Instalação: copie para /etc/systemd/system/sensor-rfid.service,
+# ajuste User, WorkingDirectory e ExecStart para o seu ambiente e execute:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now sensor-rfid
+[Unit]
+Description=API RFID SensorSerialYan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=user
+WorkingDirectory=/home/user/Downloads/rfid/drive3rfid
+ExecStart=/home/user/Downloads/rfid/drive3rfid/executar-servidor.sh
+StandardInput=null
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

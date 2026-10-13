@@ -1,4 +1,7 @@
 spring:
+  # Ajustes para servidores com poucos recursos (memória/CPU)
+  main:
+    lazy-initialization: true
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
@@ -6,3 +9,11 @@ spring:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
       - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
       - org.springframework.boot.autoconfigure.mail.MailSenderValidatorAutoConfiguration
+
+# Tomcat enxuto para servidores com poucos recursos
+server:
+  tomcat:
+    threads:
+      max: 8
+      min-spare: 1
+    accept-count: 20
