@@ -11,7 +11,7 @@
 - Endpoints (`/sensor`, `@CrossOrigin("*")`):
   - `GET /sensor/tags/{ip}/{porta}` → lista de `{tag, setor}`
   - `GET /sensor/tags/{ip}/{porta}/{tagId}` → `{tag, setor}`
-  - `GET /sensor/testar-todos` → mapa `"ip:porta"` → `OK`/`ERRO` para cada sensor do `sensors.json`
+  - `GET /sensor/testar-todos` → mapa `"ip:porta"` → objeto para cada sensor do `sensors.json`: `{status: "OK", tagsEncontradas, tags}` ou `{status: "ERRO", mensagem}` (não é string simples)
 - Perfil via `APP_PROFILE` (padrão `prod`). `README.md` é a fonte de verdade da documentação.
 
 ## Arquitetura e fluxo
@@ -77,21 +77,20 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
     - `nssm stop|start|restart sensor-rfid` OK; reinício automático após matar o `java` (`Stop-Process -Force`) OK (~10 s).
     - Startup pelos logs: primeiro start do serviço 7,3 s; depois 1,86 s (start), 1,39 s (restart) e 1,25 s (reinício automático).
   - **Não validado**: 500 para ip:porta fora do `sensors.json` (exige sensor alcançável cujo ip:porta não esteja no arquivo).
+  - Achados na máquina de teste:
+    - `nssm remove sensor-rfid confirm` com o serviço rodando só **marca para exclusão** (`DeleteFlag=1`, StartType Disabled) até ele parar → sempre `nssm stop` antes.
+    - O NSSM rotacionou `logs\servico.log` a **cada** início do serviço (não só a ~10 MB).
+    - Estado atual dessa máquina: o serviço `sensor-rfid` está **marcado para exclusão** (ainda rodando) e aponta para o `nssm` do winget na pasta do usuário.
+- `180debd` — `docs/INSTALACAO_SERVIDOR_WINDOWS.md`: tutorial de instalação **manual** do servidor Windows 10/11. Passos: VS Code → Git → JDK 17 → NSSM 2.24-101 em `C:\Program Files\nssm` → clonar em `C:\sensor-rfid` + `safe.directory` → `sensors.json` → compilar → Wi-Fi manual → teste rápido → serviço NSSM → energia → firewall `API RFID 8080`. **Ainda não validado.**
+- `f66956e` — README (Opção 4): recomenda NSSM 2.24-101 em `C:\Program Files\nssm` no PATH do sistema (em vez de `winget install NSSM.NSSM`), com link para o passo 4 do tutorial.
 
 ## Próximo passo sugerido
 
-1. **Preparar a máquina Windows que será o servidor**:
-   - JDK 17 e NSSM (ver setup de 14/10/2026), `git clone` do repositório, **um adaptador Wi-Fi por sensor**.
-   - Usar o contorno de execution policy nos `.ps1` (ver pendências).
-   - Checklist Windows:
-     - `.\mvnw.cmd clean package`
-     - `powershell -ExecutionPolicy Bypass -File .\executar-servidor.ps1`
-     - endpoints com `curl.exe` nos **6 sensores** (ver "Como validar rápido")
-     - códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**)
-     - `/testar-todos` concorrente (duas chamadas simultâneas)
-     - RAM com `Get-Process`
-     - instalar o serviço NSSM (`powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1`, como admin) e testar start/stop/restart
-2. Depois disso, revisar "Problemas conhecidos / pendências" com o usuário.
+1. **Usuário valida a instalação manual** em outra máquina/local, seguindo **só** o `docs/INSTALACAO_SERVIDOR_WINDOWS.md` (checklist final do tutorial), e relata os problemas → corrigir o tutorial.
+   - Aproveitar para testar nos **6 sensores**: códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**), `/testar-todos` concorrente e RAM.
+2. Depois, corrigir o bug do NPE no `/testar-todos` (ver pendências).
+3. Depois, se o usuário quiser, retomar o script de automação da branch `automacao-instalacao` (atualizá-lo para bater com o tutorial validado).
+4. Revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
 
@@ -100,6 +99,8 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
   - Arquivos vindos de ZIP baixado podem ficar bloqueados mesmo com `RemoteSigned` (Mark of the Web).
   - Contornos sem mudar a configuração da máquina: `powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1` (usado com sucesso) ou `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force` naquela janela.
   - O README ainda não menciona isso — proposto adicionar, **não feito**.
+- **Bug no `/testar-todos`** (`SensorController`, ~linhas 74–76): `Map.of("mensagem", e.getMessage())` lança NPE quando a exceção não tem mensagem → o `/testar-todos` inteiro responde 500. Correção: `String.valueOf(e.getMessage())`. Usuário decidiu corrigir **depois** de validar a instalação.
+- `testar-portas-sensor.ps1` só testa uma lista fixa de portas (8000, 6000, 8080, 80, 23, 5000, 4001); não cobre 8003–8006 nem 9000.
 - Não há testes (`src/test` não existe).
 - `ipLocal` (query param e campo de `SensorDTO`) é aceito mas ignorado — usuário decidiu manter e só documentar.
 - `application-local.yml` tem `spring:` aninhado dentro de `spring:` (rsocket) → essas chaves não têm efeito.
@@ -118,11 +119,14 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
 - Aprovado e feito: 404 em vez de 500; `/testar-todos` em paralelo; CLI só com TTY.
 - Manter suporte aos dois SOs (Linux e Windows); serviço Windows via **NSSM**.
 - Commitar a limpeza de código morto antes de validá-la em sensor real (validação fica para o teste na empresa).
+- A instalação do servidor será feita e validada **manualmente** primeiro, usando só o `docs/INSTALACAO_SERVIDOR_WINDOWS.md`, em outra máquina/local.
+- Script de automação (preparação do servidor) existe **isolado** na branch local `automacao-instalacao` (commit `6babd57`, não validado, sem push): manter isolado do projeto — **nunca** referenciá-lo em README/docs/commits da `main`; retomar só a pedido do usuário, depois de validada a instalação manual.
+- Servidor: NSSM em `C:\Program Files\nssm` (não winget); projeto em `C:\sensor-rfid`; regra de firewall `API RFID 8080`; VS Code em cada servidor; `sensors.json` continua dentro do jar (editar e recompilar manualmente).
 
 ## Fluxo de trabalho
 
 - Commits direto na `main` (sem PR), mensagem no estilo `tipo: descrição` em português.
-- O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`.
+- O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`. Em 14/10/2026 a `main` local está **à frente** do `origin/main` (commits `4da3fea`, `180debd`, `f66956e` e o desta atualização) → o usuário precisa rodar `git push origin main`.
 - Sempre validar com build e execução reais.
 - Máquina de dev Windows anterior (sessões até 13/10/2026): JDK 17 (Temurin 17.0.20.1, via winget) em `C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot` → build e execução locais funcionavam. Ela **não alcançava** a rede Wi-Fi dos sensores; a VPN alcançava só servidores `10.120.x`, que rodam a versão implantada (não usar para validar builds novos).
 - **Máquina de teste Windows 11** (atual, desde 14/10/2026; **não é o servidor final**): plano é validar tudo aqui e depois adaptar o projeto em **outra máquina Windows** que será o servidor. Tem **um adaptador Wi-Fi** ("Wi-Fi 4", IP `192.168.5.2`) ligado ao AP do sensor 5 → alcança só `192.168.5.1:8005`; um sensor por vez (os demais aparecem como ERRO no `/testar-todos`, esperado). Setup em "Já feito" (sessão de 14/10/2026).
@@ -151,4 +155,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 14 de outubro de 2026 (testes na máquina de teste Windows com sensor real e serviço NSSM)
+Última atualização: 14 de outubro de 2026 (tutorial de instalação manual; automação isolada em branch)
