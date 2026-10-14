@@ -10,20 +10,42 @@
 
 ### Pré-requisitos
 - Java 17+
-- Maven **não** precisa estar instalado: o projeto inclui o Maven Wrapper (`./mvnw`), que baixa o Maven automaticamente na primeira compilação.
+- Maven **não** precisa estar instalado: o projeto inclui o Maven Wrapper (`./mvnw` no Linux, `.\mvnw.cmd` no Windows), que baixa o Maven automaticamente na primeira compilação.
+
+#### Pré-requisitos adicionais no Windows
+- JDK 17 instalado, com `java` no `PATH` (e `JAVA_HOME` apontando para o JDK, usado pelo `mvnw.cmd`).
+- Um adaptador Wi-Fi por sensor, cada um conectado ao ponto de acesso do seu sensor.
+- Cada sensor deve estar em uma **sub-rede distinta** (ex.: `192.168.5.x`, `192.168.6.x`): o `ipLocal` é ignorado, então é o Windows que escolhe a interface pela tabela de rotas.
+- Se a API for acessada por outras máquinas, libere a porta 8080 no Firewall do Windows (PowerShell como administrador):
+  ```powershell
+  New-NetFirewallRule -DisplayName "API RFID 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
+  ```
 
 ### Compilar o Projeto
+**Linux:**
 ```bash
 cd /caminho/para/drive3rfid   # a pasta do projeto
 ./mvnw clean package
 ```
+**Windows (PowerShell):**
+```powershell
+cd C:\caminho\para\drive3rfid
+.\mvnw.cmd clean package
+```
 O resultado é o arquivo `target/SensorSerialYan-1.0-SNAPSHOT.jar`.
 
 ### Executar a Aplicação
+**Linux:**
 ```bash
 ./executar-servidor.sh
 ```
-O script já usa as opções da JVM abaixo, que reduzem o uso de memória (~110 MB) para servidores com poucos recursos:
+**Windows (PowerShell):**
+```powershell
+.\executar-servidor.ps1
+# se a política de execução bloquear scripts:
+powershell -ExecutionPolicy Bypass -File .\executar-servidor.ps1
+```
+Os scripts já usam as opções da JVM abaixo, que reduzem o uso de memória (~110 MB) para servidores com poucos recursos:
 ```
 -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m
 ```
@@ -37,7 +59,7 @@ O perfil ativo é definido em `application.yml` (`spring.profiles.active: ${APP_
 - limita o Tomcat a no máximo 8 threads (mínimo 1 ociosa) e fila de 20 conexões;
 - desativa a configuração automática de banco de dados, JPA e e-mail.
 
-Recomenda-se manter o padrão `prod`. Para usar outro perfil: `APP_PROFILE=local ./executar-servidor.sh`.
+Recomenda-se manter o padrão `prod`. Para usar outro perfil: `APP_PROFILE=local ./executar-servidor.sh` (Windows: `$env:APP_PROFILE = 'local'; .\executar-servidor.ps1`).
 
 ---
 
@@ -46,21 +68,24 @@ Recomenda-se manter o padrão `prod`. Para usar outro perfil: `APP_PROFILE=local
 ### Pré-requisito: compilar
 O script de inicialização **não compila** o projeto. Compile antes de iniciar:
 ```bash
-./mvnw clean package
+./mvnw clean package          # Linux
+.\mvnw.cmd clean package      # Windows (PowerShell)
 ```
 
 > Sempre que editar `sensors.json`, **recompile e reinicie** o serviço (o arquivo fica dentro do JAR e é lido uma única vez).
 
 ### Opção 1 — Terminal (para testes)
 ```bash
-./executar-servidor.sh
+./executar-servidor.sh        # Linux
+.\executar-servidor.ps1       # Windows (PowerShell)
 ```
 - Quando aparecer no log `Started Application in X seconds`, a API está pronta.
 - A mensagem `Loaded N sensors from sensors.json` **não** aparece na inicialização: ela só surge na **primeira requisição** (por causa da inicialização preguiçosa do perfil `prod`). Isso é normal.
 - No terminal aparece `CLI DO SENSOR ATIVO` (menu antigo, legado). Ele aceita `1` = testar conexão e `2` = listar tags (pergunta IP e porta); entradas inválidas apenas pedem de novo. Não é necessário usá-lo — a API funciona independentemente.
 - Para parar: `Ctrl+C`. O serviço também para ao fechar o terminal.
 
-### Opção 2 — Segundo plano (nohup)
+### Opção 2 — Segundo plano (nohup, Linux)
+No Windows, use a Opção 4 (serviço via NSSM).
 ```bash
 # Iniciar
 nohup ./executar-servidor.sh < /dev/null > servidor.log 2>&1 &
@@ -74,7 +99,7 @@ pkill -f 'java .*SensorSerialYan'
 - Continua rodando após fechar o terminal, mas **não inicia sozinho** quando o servidor é ligado.
 - Sem terminal interativo, o log mostra `CLI desativado (sem terminal interativo)` — esperado.
 
-### Opção 3 — Serviço do sistema (systemd) — recomendado para o servidor
+### Opção 3 — Serviço do sistema (systemd, Linux) — recomendado para o servidor
 Vantagens:
 - Inicia automaticamente quando o servidor é ligado
 - Reinicia sozinho em caso de falha (após 10 s)
@@ -100,7 +125,38 @@ Comandos do dia a dia:
 | Reiniciar (necessário após recompilar) | `sudo systemctl restart sensor-rfid` |
 | Não iniciar mais no boot | `sudo systemctl disable sensor-rfid` |
 
+### Opção 4 — Serviço do Windows (NSSM) — recomendado para servidor Windows
+O script `deploy\instalar-servico-windows.ps1` registra a API como serviço do Windows usando o [NSSM](https://nssm.cc), com o mesmo comportamento da unidade systemd: inicia no boot, reinicia sozinho em caso de falha (após 10 s), diretório de trabalho na raiz do projeto e sem entrada interativa. O serviço chama o `java` diretamente (com as mesmas opções da JVM padrão), então não depende da política de execução do PowerShell.
+
+1. Instale o NSSM e confira que ele está no `PATH` (abra um novo terminal depois de instalar):
+   ```powershell
+   winget install NSSM.NSSM
+   ```
+   (ou baixe de https://nssm.cc e coloque o `nssm.exe` em uma pasta do `PATH`.)
+2. Compile o projeto (`.\mvnw.cmd clean package`).
+3. Em um PowerShell **aberto como administrador**, na pasta do projeto:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1
+   nssm start sensor-rfid
+   ```
+
+O log fica em `logs\servico.log` (rotacionado pelo NSSM a cada ~10 MB, ao reiniciar o serviço) e mostrará `CLI desativado (sem terminal interativo)` — esperado.
+
+Comandos do dia a dia (PowerShell como administrador):
+
+| Ação | Comando |
+|------|---------|
+| Ver status | `nssm status sensor-rfid` |
+| Ver logs (ao vivo) | `Get-Content logs\servico.log -Wait -Tail 50` |
+| Parar | `nssm stop sensor-rfid` |
+| Iniciar | `nssm start sensor-rfid` |
+| Reiniciar (necessário após recompilar) | `nssm restart sensor-rfid` |
+| Remover o serviço | `nssm stop sensor-rfid; nssm remove sensor-rfid confirm` |
+
+> Para recompilar com o serviço rodando, pare-o antes (`nssm stop sensor-rfid`): no Windows o `.jar` em uso fica bloqueado e o `clean` falha.
+
 ### Verificar se está funcionando
+**Linux:**
 ```bash
 # Testa todos os sensores em paralelo (leva ~8–10 s no total)
 curl http://localhost:8080/sensor/testar-todos
@@ -111,12 +167,29 @@ curl http://localhost:8080/sensor/tags/<ip>/<porta>
 # Uso de memória (esperado: RSS ~110000 KB)
 ps -o pid,rss,nlwp,cmd -p $(pgrep -f 'java .*SensorSerialYan')
 ```
+**Windows (PowerShell):** no PowerShell, `curl` é um apelido de `Invoke-WebRequest`; use `curl.exe` ou `Invoke-RestMethod`.
+```powershell
+# Testa todos os sensores em paralelo (leva ~8–10 s no total)
+curl.exe http://localhost:8080/sensor/testar-todos
+
+# Tags de um sensor (leva pelo menos 8 s)
+Invoke-RestMethod http://localhost:8080/sensor/tags/<ip>/<porta>
+
+# Uso de memória (esperado: ~110 MB)
+Get-Process java | Select-Object Id, @{n='RSS_MB';e={[math]::Round($_.WorkingSet64/1MB)}}
+```
 
 ### Ajustar memória
-As opções da JVM podem ser trocadas pela variável `JAVA_OPTS`. Atenção: `JAVA_OPTS` **substitui** todas as opções padrão (não acrescenta). Por isso, informe o conjunto completo, mudando só o valor desejado. Exemplo aumentando o limite de memória para 128 MB:
+As opções da JVM podem ser trocadas pela variável `JAVA_OPTS` (padrão: `-Xmx64m`). Atenção: `JAVA_OPTS` **substitui** todas as opções padrão (não acrescenta). Por isso, informe o conjunto completo, mudando só o valor desejado. Exemplo aumentando o limite de memória de 64 MB para 128 MB:
 ```bash
 JAVA_OPTS="-Xms16m -Xmx128m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m" ./executar-servidor.sh
 ```
+No Windows (PowerShell):
+```powershell
+$env:JAVA_OPTS = '-Xms16m -Xmx128m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m'
+.\executar-servidor.ps1
+```
+No serviço do Windows (NSSM), o `JAVA_OPTS` não é usado: as opções ficam nos parâmetros do serviço. Para alterá-las, edite com `nssm edit sensor-rfid` (aba *Application*, campo *Arguments*) e reinicie o serviço.
 No systemd, adicione na seção `[Service]` de `deploy/sensor-rfid.service`:
 ```ini
 Environment="JAVA_OPTS=-Xms16m -Xmx128m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m"
@@ -249,13 +322,15 @@ Como o arquivo funciona:
 
 2. Recompile o projeto:
 ```bash
-./mvnw clean package
+./mvnw clean package          # Linux
+.\mvnw.cmd clean package      # Windows (pare o serviço antes: nssm stop sensor-rfid)
 ```
 
 3. Reinicie o serviço:
 ```bash
 sudo systemctl restart sensor-rfid    # se estiver usando systemd
-# ou pare (Ctrl+C / pkill) e rode novamente ./executar-servidor.sh
+nssm start sensor-rfid                # Windows com NSSM (após o stop do passo 2)
+# ou pare (Ctrl+C / pkill) e rode novamente ./executar-servidor.sh (ou .\executar-servidor.ps1)
 ```
 
 ---
@@ -299,11 +374,16 @@ src/main/resources/
 └── application-local.yml         # Perfil local
 
 Raiz do projeto:
-├── executar-servidor.sh          # Inicia o servidor (com as opções de JVM)
-├── testar-portas-sensor.sh       # Diagnóstico de rede de um sensor
-├── deploy/sensor-rfid.service    # Unidade systemd
+├── executar-servidor.sh          # Inicia o servidor (com as opções de JVM) — Linux
+├── executar-servidor.ps1         # Inicia o servidor (com as opções de JVM) — Windows
+├── testar-portas-sensor.sh       # Diagnóstico de rede de um sensor — Linux
+├── testar-portas-sensor.ps1      # Diagnóstico de rede de um sensor — Windows
+├── deploy/sensor-rfid.service    # Unidade systemd (Linux)
+├── deploy/instalar-servico-windows.ps1  # Instala o serviço do Windows via NSSM
+├── logs/                         # Log do serviço do Windows (criada pelo instalador; ignorada pelo git)
+├── .gitattributes                # Fins de linha: LF para .sh/mvnw, CRLF para .ps1/.cmd/.bat
 ├── docker-compose.yml            # Sobe um Postgres (legado, não usado pela aplicação)
-├── mvnw                          # Maven Wrapper
+├── mvnw / mvnw.cmd               # Maven Wrapper (Linux / Windows)
 ├── ENDPOINTS_API.md
 ├── DIAGNOSTICO_SENSORES.md
 └── INSTRUCOES_TESTE.md
@@ -395,6 +475,7 @@ curl http://localhost:8080/sensor/testar-todos
    ./mvnw clean package
    sudo systemctl restart sensor-rfid    # ou reinicie ./executar-servidor.sh
    ```
+   No Windows: `nssm stop sensor-rfid`, `.\mvnw.cmd clean package`, `nssm start sensor-rfid`.
 
 2. **O arquivo `sensors.json` é empacotado no JAR**:
    - Alterações em `src/main/resources/sensors.json` requerem recompilação
@@ -413,20 +494,21 @@ curl http://localhost:8080/sensor/testar-todos
 
 Para diagnosticar a rede de um sensor, use:
 ```bash
-./testar-portas-sensor.sh <IP>
+./testar-portas-sensor.sh <IP>      # Linux
+.\testar-portas-sensor.ps1 <IP>     # Windows (PowerShell)
 ```
-O script faz um `ping` e testa portas comuns (8000, 6000, 8080, 80, 23, 5000, 4001). Se a porta do seu sensor não estiver nessa lista, teste-a com `curl http://localhost:8080/sensor/tags/<ip>/<porta>`.
+O script faz um `ping` e testa portas comuns (8000, 6000, 8080, 80, 23, 5000, 4001), com tempo limite de 2 s por porta. Se a porta do seu sensor não estiver nessa lista, teste-a com `curl http://localhost:8080/sensor/tags/<ip>/<porta>`.
 
 ### Erro 500: "Setor não encontrado para o IP"
 - Resposta 500 (`Erro interno do servidor`), com `detail` contendo `Setor não encontrado para o IP: X e porta: Y`.
 - O par IP + porta da URL não está em `sensors.json` (a comparação é exata).
 - Só aparece depois da leitura de 8 s e se o sensor leu alguma tag.
-- Corrija `sensors.json`, recompile (`./mvnw clean package`) e reinicie o serviço.
+- Corrija `sensors.json`, recompile (`./mvnw clean package` ou `.\mvnw.cmd clean package`) e reinicie o serviço.
 
 ### Erro 503: "Timeout ao conectar ao sensor"
 - Resposta 503 (`Erro de conexão com o sensor`), `detail` terminando em `Erro: Connect timed out`, `errorType`: `SocketTimeoutException`. No `/sensor/testar-todos` aparece como `"status": "ERRO"` com a mensagem `Timeout ao conectar ao sensor em IP:PORTA...`.
 - Verifique se o sensor está ligado
-- Verifique a conectividade de rede (`./testar-portas-sensor.sh <IP>`)
+- Verifique a conectividade de rede (`./testar-portas-sensor.sh <IP>` ou `.\testar-portas-sensor.ps1 <IP>`)
 - Confirme IP e porta
 
 ### Erro 503: "Conexão recusada"

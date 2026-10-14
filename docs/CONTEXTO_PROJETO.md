@@ -30,6 +30,8 @@
 
 Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda está sendo definida pelo usuário, que decide com base nas medições.
 
+Suportar **Linux e Windows**. A adaptação para Windows está pronta, mas **não foi validada em execução**: o usuário vai testar no servidor da empresa em 14/10/2026 (com VPN conectada, os sensores da empresa ficam alcançáveis).
+
 ## Já feito
 
 - `f921893` — sensores 5 e 6 no `sensors.json` e `CLAUDE.md`.
@@ -42,10 +44,23 @@ Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda est
   - RSS: ~205 MB → **~110 MB**
   - Startup: 2,8 s → **1,9 s** (single-core: 5,7 s → 2,7 s)
   - Piso de ~110 MB; abaixo disso só com GraalVM native.
+- Commit da adaptação Windows (mantendo Linux):
+  - `executar-servidor.ps1` e `testar-portas-sensor.ps1`: equivalentes aos `.sh` (mesmo `JAVA_OPTS` padrão). Em UTF-8 **com BOM** (necessário para acentos no PowerShell 5.1).
+  - `deploy/instalar-servico-windows.ps1`: serviço `sensor-rfid` via **NSSM** (chama `java` direto; reinício em falha após 10 s; log em `logs\servico.log` com rotação na inicialização; exige admin, `nssm` e `java` no PATH). Não lê `JAVA_OPTS` → ajustar com `nssm edit sensor-rfid`.
+  - `.gitattributes`: `*.sh`/`mvnw` LF; `*.ps1`/`*.cmd`/`*.bat` CRLF. `.gitignore` ganhou `logs/`.
+  - README: seções Windows lado a lado com Linux (Opção 4 = NSSM).
+  - Validado: sintaxe dos `.ps1` (parser), `testar-portas-sensor.ps1` (porta aberta/fechada/IP inalcançável), fins de linha, `bash -n` nos `.sh`.
+  - **Não validado**: build, execução e endpoints no Windows; instalador NSSM.
 
-## Próximo passo sugerido (não iniciado)
+## Próximo passo sugerido
 
-Remover código e dependências mortas:
+1. **Testar no Windows** (servidor da empresa, 14/10/2026, com VPN):
+   - `.\mvnw.cmd clean package`
+   - `.\executar-servidor.ps1`
+   - endpoints com `curl.exe` (ver "Como validar rápido")
+   - RAM com `Get-Process`
+   - instalar o serviço NSSM (`deploy\instalar-servico-windows.ps1`, como admin) e testar start/stop/restart
+2. Depois, **remover código e dependências mortas** (não iniciado):
 
 - `pom.xml`: `spring-boot-starter-data-jpa`, `postgresql`, `forms_rt` (IntelliJ), `jSerialComm` (verificado: usado só por `driver/Reader.java`).
 - `docker-compose.yml` (Postgres que o código não usa).
@@ -72,12 +87,15 @@ Esperado: jar ~pela metade; RAM quase igual. **Não pode quebrar**: depois, vali
 - Recusado: lock de leitura por sensor (Connection reset); aviso no README para parar a instância antiga antes de reiniciar; `servidor.log` no `.gitignore`.
 - Manter `ipLocal` (apenas documentado como ignorado).
 - Aprovado e feito: 404 em vez de 500; `/testar-todos` em paralelo; CLI só com TTY.
+- Manter suporte aos dois SOs (Linux e Windows); serviço Windows via **NSSM**.
+- Não instalar JDK na máquina de desenvolvimento Windows.
 
 ## Fluxo de trabalho
 
 - Commits direto na `main` (sem PR), mensagem no estilo `tipo: descrição` em português.
 - O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`.
 - Sempre validar com build e execução reais.
+- O ambiente de dev pode ser **Windows sem JDK** (sem build/execução local; só validação de sintaxe). Nesse caso, a validação real fica para o servidor.
 - Sensor real alcançável durante o desenvolvimento: `192.168.5.1:8005` (pode ser diferente em outra máquina).
 - Linha de comando da JVM usada nas verificações = `JAVA_OPTS` padrão do `executar-servidor.sh`:
   `java -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m -jar target/SensorSerialYan-1.0-SNAPSHOT.jar`
@@ -93,4 +111,14 @@ curl http://localhost:8080/sensor/tags/192.168.5.1/8005/<tagId>
 ps -o pid,rss,nlwp,cmd -p $(pgrep -f 'java .*SensorSerialYan')   # RSS em KB (~110 MB esperado)
 ```
 
-Última atualização: 13 de outubro de 2026
+Windows (PowerShell):
+
+```powershell
+.\mvnw.cmd clean package
+.\executar-servidor.ps1                                  # em outro terminal para os testes abaixo
+curl.exe http://localhost:8080/sensor/testar-todos
+curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
+Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
+```
+
+Última atualização: 13 de outubro de 2026 (adaptação Windows)
