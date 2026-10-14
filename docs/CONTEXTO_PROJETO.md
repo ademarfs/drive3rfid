@@ -30,7 +30,7 @@
 
 Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda está sendo definida pelo usuário, que decide com base nas medições.
 
-Suportar **Linux e Windows**. A adaptação para Windows está pronta, mas **não foi validada em execução**: o usuário vai testar no servidor da empresa em 14/10/2026 (com VPN conectada, os sensores da empresa ficam alcançáveis).
+Suportar **Linux e Windows**. A adaptação para Windows está pronta (build e start validados na máquina de dev), mas **não foi validada com sensor real**: o usuário vai testar no servidor da empresa em 14/10/2026.
 
 ## Já feito
 
@@ -44,31 +44,32 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta, mas **nã
   - RSS: ~205 MB → **~110 MB**
   - Startup: 2,8 s → **1,9 s** (single-core: 5,7 s → 2,7 s)
   - Piso de ~110 MB; abaixo disso só com GraalVM native.
-- Commit da adaptação Windows (mantendo Linux):
+- `a46582b` — adaptação Windows (mantendo Linux; push feito):
   - `executar-servidor.ps1` e `testar-portas-sensor.ps1`: equivalentes aos `.sh` (mesmo `JAVA_OPTS` padrão). Em UTF-8 **com BOM** (necessário para acentos no PowerShell 5.1).
   - `deploy/instalar-servico-windows.ps1`: serviço `sensor-rfid` via **NSSM** (chama `java` direto; reinício em falha após 10 s; log em `logs\servico.log` com rotação na inicialização; exige admin, `nssm` e `java` no PATH). Não lê `JAVA_OPTS` → ajustar com `nssm edit sensor-rfid`.
   - `.gitattributes`: `*.sh`/`mvnw` LF; `*.ps1`/`*.cmd`/`*.bat` CRLF. `.gitignore` ganhou `logs/`.
   - README: seções Windows lado a lado com Linux (Opção 4 = NSSM).
   - Validado: sintaxe dos `.ps1` (parser), `testar-portas-sensor.ps1` (porta aberta/fechada/IP inalcançável), fins de linha, `bash -n` nos `.sh`.
-  - **Não validado**: build, execução e endpoints no Windows; instalador NSSM.
+  - **Não validado**: endpoints com sensor real no Windows; instalador NSSM. (Build e start no Windows validados depois, na limpeza abaixo.)
+- Commit da limpeza de código morto:
+  - `pom.xml`: removidos `spring-boot-starter-data-jpa`, `postgresql`, `forms_rt`, `jSerialComm` (só `spring-boot-starter-web` restou).
+  - Removidos `docker-compose.yml`, `driver/Reader.java`, `SensorManagerService` (e do construtor do `SensorController`), `SensorDataDTO`, `SensorResponseDTO`.
+  - Removidos os excludes de JPA de `application-prod.yml` e `application-local.yml` (excludes de mail mantidos). README ajustado.
+  - Medições: jar 51,8 MB → **20,0 MB** (−61%); RAM ~110 MB (inalterada); startup 1,37 s no Windows (perfil prod, sem WARN/ERROR).
+  - Validado (Windows): build, start, `/sensor/testar-todos` HTTP 200 (todos ERRO por timeout — rede dos sensores inalcançável).
+  - **Não validado**: leitura de tags em sensor real (`/tags/{ip}/{porta}` e `/{tagId}`) e códigos de erro (ex.: ip:porta inválido).
 
 ## Próximo passo sugerido
 
-1. **Testar no Windows** (servidor da empresa, 14/10/2026, com VPN):
-   - `.\mvnw.cmd clean package`
-   - `.\executar-servidor.ps1`
-   - endpoints com `curl.exe` (ver "Como validar rápido")
-   - RAM com `Get-Process`
-   - instalar o serviço NSSM (`deploy\instalar-servico-windows.ps1`, como admin) e testar start/stop/restart
-2. Depois, **remover código e dependências mortas** (não iniciado):
-
-- `pom.xml`: `spring-boot-starter-data-jpa`, `postgresql`, `forms_rt` (IntelliJ), `jSerialComm` (verificado: usado só por `driver/Reader.java`).
-- `docker-compose.yml` (Postgres que o código não usa).
-- Excludes de autoconfigure que existem só por causa do JPA (DataSource/Hibernate/DataSourceTransactionManager em `application.yml`, `application-prod.yml`, `application-local.yml`).
-- `driver/Reader.java` (@deprecated, estado estático, serial).
-- `SensorManagerService` (injetado no construtor do `SensorController` mas nunca usado → remover também do construtor), `SensorDataDTO`, `SensorResponseDTO`.
-
-Esperado: jar ~pela metade; RAM quase igual. **Não pode quebrar**: depois, validar build + start + requisições reais a um sensor (ver "Como validar rápido").
+1. **Testar no servidor da empresa** (14/10/2026, com acesso aos sensores):
+   - Checklist Windows:
+     - `.\mvnw.cmd clean package`
+     - `.\executar-servidor.ps1`
+     - endpoints com `curl.exe` (ver "Como validar rápido")
+     - RAM com `Get-Process`
+     - instalar o serviço NSSM (`deploy\instalar-servico-windows.ps1`, como admin) e testar start/stop/restart
+   - Validar, após a limpeza: leitura real de tags (`/tags/{ip}/{porta}` e `/tags/{ip}/{porta}/{tagId}`) e códigos de erro (404, 503, 400, 500 com ip:porta inválido).
+2. Depois disso não há próximo passo definido — sugerido revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
 
@@ -81,6 +82,7 @@ Esperado: jar ~pela metade; RAM quase igual. **Não pode quebrar**: depois, vali
 - Segunda instância → só `BindException: Endereço já em uso` cru.
 - `servidor.log` (gerado com nohup) não está no `.gitignore`.
 - `ENDPOINTS_API.md`, `DIAGNOSTICO_SENSORES.md`, `INSTRUCOES_TESTE.md` podem estar desatualizados; o `README.md` é a fonte de verdade.
+- `.idea/dataSources.xml` ainda cita Postgres (config do IntelliJ, fora do escopo da limpeza).
 
 ## Decisões do usuário (não refazer sem pedido)
 
@@ -88,14 +90,14 @@ Esperado: jar ~pela metade; RAM quase igual. **Não pode quebrar**: depois, vali
 - Manter `ipLocal` (apenas documentado como ignorado).
 - Aprovado e feito: 404 em vez de 500; `/testar-todos` em paralelo; CLI só com TTY.
 - Manter suporte aos dois SOs (Linux e Windows); serviço Windows via **NSSM**.
-- Não instalar JDK na máquina de desenvolvimento Windows.
+- Commitar a limpeza de código morto antes de validá-la em sensor real (validação fica para o teste na empresa).
 
 ## Fluxo de trabalho
 
 - Commits direto na `main` (sem PR), mensagem no estilo `tipo: descrição` em português.
 - O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`.
 - Sempre validar com build e execução reais.
-- O ambiente de dev pode ser **Windows sem JDK** (sem build/execução local; só validação de sintaxe). Nesse caso, a validação real fica para o servidor.
+- Máquina de dev Windows: JDK 17 (Temurin 17.0.20.1, via winget) em `C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot` → build e execução locais funcionam. Ela **não alcança** a rede Wi-Fi dos sensores; a VPN alcança só servidores `10.120.x`, que rodam a versão implantada (não usar para validar builds novos). Leitura real de tags fica para o servidor da empresa.
 - Sensor real alcançável durante o desenvolvimento: `192.168.5.1:8005` (pode ser diferente em outra máquina).
 - Linha de comando da JVM usada nas verificações = `JAVA_OPTS` padrão do `executar-servidor.sh`:
   `java -Xms16m -Xmx64m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=32m -jar target/SensorSerialYan-1.0-SNAPSHOT.jar`
@@ -121,4 +123,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 13 de outubro de 2026 (adaptação Windows)
+Última atualização: 13 de outubro de 2026 (limpeza de código morto)

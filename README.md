@@ -57,7 +57,7 @@ A aplicação iniciará em: `http://localhost:8080`
 O perfil ativo é definido em `application.yml` (`spring.profiles.active: ${APP_PROFILE:prod}`). Sem configurar nada, o perfil usado é **`prod`**, que:
 - inicializa os componentes de forma preguiçosa (*lazy initialization*), só quando são usados pela primeira vez;
 - limita o Tomcat a no máximo 8 threads (mínimo 1 ociosa) e fila de 20 conexões;
-- desativa a configuração automática de banco de dados, JPA e e-mail.
+- desativa a configuração automática de e-mail.
 
 Recomenda-se manter o padrão `prod`. Para usar outro perfil: `APP_PROFILE=local ./executar-servidor.sh` (Windows: `$env:APP_PROFILE = 'local'; .\executar-servidor.ps1`).
 
@@ -341,7 +341,6 @@ nssm start sensor-rfid                # Windows com NSSM (após o stop do passo 
 src/main/java/org/Yan/
 ├── Application.java                 # Classe principal Spring Boot + menu CLI legado
 ├── driver/
-│   ├── Reader.java                 # Classe legada (@deprecated), não usada
 │   └── WirelessReader.java         # Protocolo TCP do leitor Fonkan FI-801
 ├── exceptions/
 │   ├── ApiExceptionHandler.java    # Tratamento global de erros (ProblemDetail)
@@ -356,16 +355,13 @@ src/main/java/org/Yan/
 │   │   └── SensorController.java   # Endpoints REST
 │   ├── DTO/
 │   │   ├── TagDto.java            # DTO de tags (tag + setor)
-│   │   ├── SensorDTO.java         # DTO de sensores (itens do sensors.json)
-│   │   ├── SensorDataDTO.java     # Não usado
-│   │   └── SensorResponseDTO.java # Não usado
+│   │   └── SensorDTO.java         # DTO de sensores (itens do sensors.json)
 │   └── security/
 │       └── RequestFilter.java     # Só registra no log cada requisição (método, caminho, IP, status, duração)
 └── service/
     ├── ISensorService.java        # Interface do serviço
     ├── SensorService.java         # Implementação principal (leitura das tags)
-    ├── SensorConfigService.java   # Leitura do sensors.json e busca de setor
-    └── SensorManagerService.java  # Não usado
+    └── SensorConfigService.java   # Leitura do sensors.json e busca de setor
 
 src/main/resources/
 ├── sensors.json                   # Arquivo de configuração dos sensores
@@ -382,7 +378,6 @@ Raiz do projeto:
 ├── deploy/instalar-servico-windows.ps1  # Instala o serviço do Windows via NSSM
 ├── logs/                         # Log do serviço do Windows (criada pelo instalador; ignorada pelo git)
 ├── .gitattributes                # Fins de linha: LF para .sh/mvnw, CRLF para .ps1/.cmd/.bat
-├── docker-compose.yml            # Sobe um Postgres (legado, não usado pela aplicação)
 ├── mvnw / mvnw.cmd               # Maven Wrapper (Linux / Windows)
 ├── ENDPOINTS_API.md
 ├── DIAGNOSTICO_SENSORES.md
@@ -438,10 +433,6 @@ A aplicação **não tem valores de setor fixos no código**. Em vez disso:
 - **Maven** (via Maven Wrapper `./mvnw`) - Gerenciador de dependências
 - **Jackson** - Processamento de JSON
 - **SLF4J** - Logging
-
-Observações:
-- `spring-data-jpa` e `postgresql` estão no `pom.xml`, e o `docker-compose.yml` sobe um Postgres, mas a aplicação **não usa banco de dados** (a configuração automática está desativada). São resquícios legados.
-- `jSerialComm` só é usado pela classe legada `Reader.java` (não usada).
 
 ---
 

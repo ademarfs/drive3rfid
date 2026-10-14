@@ -2,7 +2,6 @@ package org.Yan.infra.controller;
 
 import org.Yan.infra.DTO.TagDto;
 import org.Yan.service.ISensorService;
-import org.Yan.service.SensorManagerService;
 import org.Yan.service.SensorConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,12 +16,10 @@ import java.util.List;
 public class SensorController {
     private static final Logger log = LoggerFactory.getLogger(SensorController.class);
     private final ISensorService service;
-    private final SensorManagerService sensorManager;
     private final SensorConfigService configService;
 
-    public SensorController(ISensorService service, SensorManagerService sensorManager, SensorConfigService configService) {
+    public SensorController(ISensorService service, SensorConfigService configService) {
         this.service = service;
-        this.sensorManager = sensorManager;
         this.configService = configService;
     }
 
