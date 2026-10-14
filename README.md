@@ -128,11 +128,7 @@ Comandos do dia a dia:
 ### Opção 4 — Serviço do Windows (NSSM) — recomendado para servidor Windows
 O script `deploy\instalar-servico-windows.ps1` registra a API como serviço do Windows usando o [NSSM](https://nssm.cc), com o mesmo comportamento da unidade systemd: inicia no boot, reinicia sozinho em caso de falha (após 10 s), diretório de trabalho na raiz do projeto e sem entrada interativa. O serviço chama o `java` diretamente (com as mesmas opções da JVM padrão), então não depende da política de execução do PowerShell.
 
-1. Instale o NSSM e confira que ele está no `PATH` (abra um novo terminal depois de instalar):
-   ```powershell
-   winget install NSSM.NSSM
-   ```
-   (ou baixe de https://nssm.cc e coloque o `nssm.exe` em uma pasta do `PATH`.)
+1. Instale o NSSM **2.24-101** (a 2.24 "estável" tem um bug a partir do Windows 10 Creators Update): baixe https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip, copie o `win64\nssm.exe` para `C:\Program Files\nssm` e coloque essa pasta no `PATH` do **sistema** (abra um novo terminal depois). Não use o `winget install NSSM.NSSM`: ele instala na pasta do usuário, e o serviço roda como LocalSystem. Detalhes no [passo 4 do tutorial de instalação](docs/INSTALACAO_SERVIDOR_WINDOWS.md#4-nssm).
 2. Compile o projeto (`.\mvnw.cmd clean package`).
 3. Em um PowerShell **aberto como administrador**, na pasta do projeto:
    ```powershell
