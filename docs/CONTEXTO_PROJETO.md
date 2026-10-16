@@ -30,7 +30,7 @@
 
 Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda está sendo definida pelo usuário, que decide com base nas medições.
 
-Suportar **Linux e Windows**. A adaptação para Windows está pronta (build e start validados na máquina de dev), mas **não foi validada com sensor real**: o usuário vai testar no servidor da empresa em 14/10/2026.
+Suportar **Linux e Windows**. A adaptação para Windows está pronta e foi **validada com sensor real** em 16/10/2026 (via serviço NSSM); as verificações restantes estão em "Próximo passo sugerido".
 
 ## Já feito
 
@@ -50,25 +50,30 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta (build e s
   - `.gitattributes`: `*.sh`/`mvnw` LF; `*.ps1`/`*.cmd`/`*.bat` CRLF. `.gitignore` ganhou `logs/`.
   - README: seções Windows lado a lado com Linux (Opção 4 = NSSM).
   - Validado: sintaxe dos `.ps1` (parser), `testar-portas-sensor.ps1` (porta aberta/fechada/IP inalcançável), fins de linha, `bash -n` nos `.sh`.
-  - **Não validado**: endpoints com sensor real no Windows; instalador NSSM. (Build e start no Windows validados depois, na limpeza abaixo.)
+  - **Não validado**: endpoints individuais `/tags/{ip}/{porta}` e `/{tagId}` no Windows. (Build e start no Windows validados depois, na limpeza abaixo; instalador NSSM e leitura real via `/testar-todos` validados em 16/10/2026.)
 - Commit da limpeza de código morto:
   - `pom.xml`: removidos `spring-boot-starter-data-jpa`, `postgresql`, `forms_rt`, `jSerialComm` (só `spring-boot-starter-web` restou).
   - Removidos `docker-compose.yml`, `driver/Reader.java`, `SensorManagerService` (e do construtor do `SensorController`), `SensorDataDTO`, `SensorResponseDTO`.
   - Removidos os excludes de JPA de `application-prod.yml` e `application-local.yml` (excludes de mail mantidos). README ajustado.
   - Medições: jar 51,8 MB → **20,0 MB** (−61%); RAM ~110 MB (inalterada); startup 1,37 s no Windows (perfil prod, sem WARN/ERROR).
   - Validado (Windows): build, start, `/sensor/testar-todos` HTTP 200 (todos ERRO por timeout — rede dos sensores inalcançável).
-  - **Não validado**: leitura de tags em sensor real (`/tags/{ip}/{porta}` e `/{tagId}`) e códigos de erro (ex.: ip:porta inválido).
+  - **Não validado**: endpoints individuais (`/tags/{ip}/{porta}` e `/{tagId}`) e códigos de erro (ex.: ip:porta inválido). (Leitura real de tags via `/testar-todos` validada em 16/10/2026.)
+- Validação no Windows (16/10/2026, máquina `C:\sensor-rfid` do usuário `ademar.silva`):
+  - NSSM 2.24-101-g897c7ad 64-bit instalado manualmente em `C:\Program Files\nssm` (`win64\nssm.exe`, pasta no Path do sistema; não via winget), seguindo o guia artifact https://claude.ai/artifact/QUJEwr1tkJKvnmL6hyQfKY ("Instalação do Servidor RFID", 13 etapas).
+  - Serviço `sensor-rfid` instalado com `deploy\instalar-servico-windows.ps1` e iniciado: Running, StartType Automatic.
+  - `/sensor/testar-todos` via serviço: `192.168.5.1:8005` OK com 9 tags reais (Setor 05) → **leitura real de tags validada no Windows**. Demais sensores (`192.168.2.1:8000`, `3.1:8003`, `4.1:8004`, `6.1:8006`, `20.1:9000`) deram ERRO por timeout (não conectados nessa máquina).
+  - Observação: nessa máquina o JDK 17 está instalado por usuário em `C:\Users\ademar.silva\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.20.101-hotspot` (o instalador do serviço grava o caminho completo do `java`, então funciona como LocalSystem).
 
 ## Próximo passo sugerido
 
-1. **Testar no servidor da empresa** (14/10/2026, com acesso aos sensores):
-   - Checklist Windows:
-     - `.\mvnw.cmd clean package`
-     - `.\executar-servidor.ps1`
-     - endpoints com `curl.exe` (ver "Como validar rápido")
+1. **Testar no servidor da empresa** (com acesso aos sensores):
+   - Feito (16/10/2026): instalar o serviço NSSM e iniciar; leitura real de tags via `/testar-todos` (`192.168.5.1:8005`).
+   - Pendente (Windows):
+     - endpoints individuais com `curl.exe`: `/tags/{ip}/{porta}` e `/tags/{ip}/{porta}/{tagId}` (ver "Como validar rápido")
+     - códigos de erro (404, 503, 400, 500 com ip:porta inválido)
+     - stop/restart do serviço
      - RAM com `Get-Process`
-     - instalar o serviço NSSM (`deploy\instalar-servico-windows.ps1`, como admin) e testar start/stop/restart
-   - Validar, após a limpeza: leitura real de tags (`/tags/{ip}/{porta}` e `/tags/{ip}/{porta}/{tagId}`) e códigos de erro (404, 503, 400, 500 com ip:porta inválido).
+     - todos os sensores conectados ao mesmo tempo (um adaptador Wi-Fi por sensor)
 2. Depois disso não há próximo passo definido — sugerido revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
@@ -83,6 +88,7 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta (build e s
 - `servidor.log` (gerado com nohup) não está no `.gitignore`.
 - `ENDPOINTS_API.md`, `DIAGNOSTICO_SENSORES.md`, `INSTRUCOES_TESTE.md` podem estar desatualizados; o `README.md` é a fonte de verdade.
 - `.idea/dataSources.xml` ainda cita Postgres (config do IntelliJ, fora do escopo da limpeza).
+- `sensors.json`: Setor 01 = `192.168.2.1:8000` e Setor 02 = `192.168.20.1:9000` fogem do padrão `192.168.N.1:800N` dos demais (Setor 03–06) — confirmar com o usuário se são os IPs/portas reais.
 
 ## Decisões do usuário (não refazer sem pedido)
 
@@ -123,4 +129,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 13 de outubro de 2026 (limpeza de código morto)
+Última atualização: 16 de outubro de 2026 (serviço NSSM validado no Windows com sensor real)
