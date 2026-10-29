@@ -89,6 +89,12 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
   - `695c311` — passo 2: comando para definir `JAVA_HOME` (faltava → `mvnw` falhava); passo 4: copiar **só** o `nssm.exe` da pasta `win64` para `C:\Program Files\nssm` e usar o `Path` **do sistema** (ambiguidade na cópia); passo 5: conferência com `(Get-Command nssm).Source`.
   - `fb2aa03` — passo 11 e "Comandos úteis": `nssm status sensor-rfid` (deve mostrar `SERVICE_RUNNING`).
   - Detalhes dos testes de API nessa máquina (6 sensores, códigos de erro, RAM) **não relatados**.
+- `f1ebe3a` (feito na máquina servidor, integrado via merge em 29/10/2026) — validação de 16/10/2026 na máquina servidor (`C:\sensor-rfid`, usuário `ademar.silva`), seguindo o tutorial de 13 passos (artifact):
+  - NSSM 2.24-101-g897c7ad 64-bit em `C:\Program Files\nssm` (pasta no Path do sistema; não via winget).
+  - Serviço `sensor-rfid` instalado com `deploy\instalar-servico-windows.ps1`: Running, StartType Automatic.
+  - `/sensor/testar-todos` via serviço: `192.168.5.1:8005` OK com 9 tags reais (Setor 05); demais sensores ERRO por timeout (não conectados nessa máquina).
+  - Nessa máquina o JDK 17 está instalado por usuário em `C:\Users\ademar.silva\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.20.101-hotspot` (o instalador do serviço grava o caminho completo do `java`, então funciona como LocalSystem).
+  - Cuidado: JDK por usuário depende desse perfil de usuário existir/estar acessível; o caminho do tutorial é a instalação para a máquina toda (`.msi`).
 
 ## Próximo passo sugerido
 
@@ -104,7 +110,7 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
   - Contornos sem mudar a configuração da máquina: `powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1` (usado com sucesso) ou `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force` naquela janela.
   - O README ainda não menciona isso — proposto adicionar, **não feito**.
 - **Bug no `/testar-todos`** (`SensorController`, ~linhas 74–76): `Map.of("mensagem", e.getMessage())` lança NPE quando a exceção não tem mensagem → o `/testar-todos` inteiro responde 500. Correção: `String.valueOf(e.getMessage())`. Usuário decidiu corrigir **depois** de validar a instalação.
-- Teste nos **6 sensores** não relatado: códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**), `/testar-todos` concorrente e RAM.
+- Teste nos **6 sensores** não relatado: todos conectados ao mesmo tempo (um adaptador Wi-Fi por sensor), códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**), `/testar-todos` concorrente e RAM no servidor.
 - `testar-portas-sensor.ps1` só testa uma lista fixa de portas (8000, 6000, 8080, 80, 23, 5000, 4001); não cobre 8003–8006 nem 9000.
 - Não há testes (`src/test` não existe).
 - `ipLocal` (query param e campo de `SensorDTO`) é aceito mas ignorado — usuário decidiu manter e só documentar.
@@ -129,11 +135,13 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
 - Servidor: NSSM em `C:\Program Files\nssm` (não winget); projeto em `C:\sensor-rfid`; regra de firewall `API RFID 8080`; VS Code em cada servidor; `sensors.json` continua dentro do jar (editar e recompilar manualmente).
 - Tutorial de instalação deve continuar **simples** (sem seções de validação/solução de problemas).
 - Push da `main` só depois de validar o tutorial de 13 passos em outra máquina → validado em 29/10/2026, **push liberado**.
+- Endereços dos sensores 1 e 2 (`192.168.2.1:8000` e `192.168.20.1:9000`) ficam fora do padrão `192.168.N.1:800N` **de propósito** — decisão do usuário em 29/10/2026; não "corrigir".
 
 ## Fluxo de trabalho
 
 - Commits direto na `main` (sem PR), mensagem no estilo `tipo: descrição` em português.
 - O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`. Em 29/10/2026 o usuário está fazendo o push dos commits de docs até este (inclusive), após validar o tutorial de 13 passos.
+- Em 29/10/2026 o push foi rejeitado porque o `origin` tinha `f1ebe3a` (commit feito na máquina servidor em 16/10) → integrado via merge. Ao trabalhar em mais de uma máquina, `git pull` antes de começar.
 - Sempre validar com build e execução reais.
 - Máquina de dev Windows anterior (sessões até 13/10/2026): JDK 17 (Temurin 17.0.20.1, via winget) em `C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot` → build e execução locais funcionavam. Ela **não alcançava** a rede Wi-Fi dos sensores; a VPN alcançava só servidores `10.120.x`, que rodam a versão implantada (não usar para validar builds novos).
 - **Máquina de teste Windows 11** (atual, desde 14/10/2026; **não é o servidor final**): plano é validar tudo aqui e depois adaptar o projeto em **outra máquina Windows** que será o servidor. Tem **um adaptador Wi-Fi** ("Wi-Fi 4", IP `192.168.5.2`) ligado ao AP do sensor 5 → alcança só `192.168.5.1:8005`; um sensor por vez (os demais aparecem como ERRO no `/testar-todos`, esperado). Setup em "Já feito" (sessão de 14/10/2026).
@@ -162,4 +170,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 29 de outubro de 2026 (tutorial de 13 passos validado; push)
+Última atualização: 29 de outubro de 2026 (tutorial de 13 passos validado; merge com f1ebe3a; push)
