@@ -30,7 +30,7 @@
 
 Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda está sendo definida pelo usuário, que decide com base nas medições.
 
-Suportar **Linux e Windows**. A adaptação para Windows está pronta e **validada com sensor real** (14/10/2026) numa **máquina de teste Windows 11** (não é o servidor final). Falta preparar a **máquina Windows que será o servidor** (outra máquina) e testar lá com os 6 sensores.
+Suportar **Linux e Windows**. A adaptação para Windows está pronta e **validada com sensor real** (14/10/2026) numa **máquina de teste Windows 11** (não é o servidor final). O tutorial de instalação de 13 passos (`docs/INSTALACAO_SERVIDOR_WINDOWS.md`) foi **validado em outra máquina Windows** (29/10/2026). Falta testar com os 6 sensores (não relatado).
 
 ## Já feito
 
@@ -83,16 +83,18 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
     - Estado atual dessa máquina: o serviço `sensor-rfid` está **marcado para exclusão** (ainda rodando) e aponta para o `nssm` do winget na pasta do usuário.
 - `180debd` — `docs/INSTALACAO_SERVIDOR_WINDOWS.md`: tutorial de instalação **manual** do servidor Windows 10/11. Passos: VS Code → Git → JDK 17 → NSSM 2.24-101 em `C:\Program Files\nssm` → clonar em `C:\sensor-rfid` + `safe.directory` → `sensors.json` → compilar → Wi-Fi manual → teste rápido → serviço NSSM → energia → firewall `API RFID 8080`. Substituído pela versão simplificada em `8c9c0fd` (abaixo).
 - `f66956e` — README (Opção 4): recomenda NSSM 2.24-101 em `C:\Program Files\nssm` no PATH do sistema (em vez de `winget install NSSM.NSSM`), com link para o passo 4 do tutorial.
-- `8c9c0fd` — `docs/INSTALACAO_SERVIDOR_WINDOWS.md` simplificado (a pedido do usuário: doc simples, sem seções de validação nem solução de problemas) para **13 passos curtos**: VS Code → Java 17 → Git → NSSM → reabrir o PowerShell como admin → clonar + `safe.directory` → `sensors.json` → compilar → Wi-Fi pela bandeja → teste `/testar-todos` → serviço → firewall `API RFID 8080` → suspensão; mais "Comandos úteis". **Ainda não validado.**
+- `8c9c0fd` — `docs/INSTALACAO_SERVIDOR_WINDOWS.md` simplificado (a pedido do usuário: doc simples, sem seções de validação nem solução de problemas) para **13 passos curtos**: VS Code → Java 17 → Git → NSSM → reabrir o PowerShell como admin → clonar + `safe.directory` → `sensors.json` → compilar → Wi-Fi pela bandeja → teste `/testar-todos` → serviço → firewall `API RFID 8080` → suspensão; mais "Comandos úteis". Validado em 29/10/2026 (abaixo).
   - Versão HTML do tutorial simples publicada como artifact privado no claude.ai (https://claude.ai/artifact/QUJEwr1tkJKvnmL6hyQfKY); **não está no repositório**.
+- Validação do tutorial de 13 passos (29/10/2026): o usuário seguiu a página HTML em outra máquina Windows → "tá tudo funcionando". Problemas achados e corrigidos (no `.md` e no HTML):
+  - `695c311` — passo 2: comando para definir `JAVA_HOME` (faltava → `mvnw` falhava); passo 4: copiar **só** o `nssm.exe` da pasta `win64` para `C:\Program Files\nssm` e usar o `Path` **do sistema** (ambiguidade na cópia); passo 5: conferência com `(Get-Command nssm).Source`.
+  - `fb2aa03` — passo 11 e "Comandos úteis": `nssm status sensor-rfid` (deve mostrar `SERVICE_RUNNING`).
+  - Detalhes dos testes de API nessa máquina (6 sensores, códigos de erro, RAM) **não relatados**.
 
 ## Próximo passo sugerido
 
-1. **Usuário valida o tutorial de 13 passos** em outra máquina, lendo-o pelo artifact HTML (equivalente ao `docs/INSTALACAO_SERVIDOR_WINDOWS.md`), e relata os problemas → ajustar o tutorial (mantendo-o simples) → depois o usuário faz o push da `main`.
-   - Aproveitar para testar nos **6 sensores**: códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**), `/testar-todos` concorrente e RAM.
-2. Depois, corrigir o bug do NPE no `/testar-todos` (ver pendências).
-3. Depois, se o usuário quiser, retomar o script de automação da branch `automacao-instalacao` (atualizá-lo para bater com o tutorial validado).
-4. Revisar "Problemas conhecidos / pendências" com o usuário.
+1. Corrigir o bug do NPE no `/testar-todos` (ver pendências).
+2. Depois, se o usuário quiser, retomar o script de automação da branch `automacao-instalacao` (atualizá-lo para bater com o tutorial validado).
+3. Revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
 
@@ -102,6 +104,7 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
   - Contornos sem mudar a configuração da máquina: `powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1` (usado com sucesso) ou `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force` naquela janela.
   - O README ainda não menciona isso — proposto adicionar, **não feito**.
 - **Bug no `/testar-todos`** (`SensorController`, ~linhas 74–76): `Map.of("mensagem", e.getMessage())` lança NPE quando a exceção não tem mensagem → o `/testar-todos` inteiro responde 500. Correção: `String.valueOf(e.getMessage())`. Usuário decidiu corrigir **depois** de validar a instalação.
+- Teste nos **6 sensores** não relatado: códigos de erro (404, 503, 400 e **500 com ip:porta fora do `sensors.json`**), `/testar-todos` concorrente e RAM.
 - `testar-portas-sensor.ps1` só testa uma lista fixa de portas (8000, 6000, 8080, 80, 23, 5000, 4001); não cobre 8003–8006 nem 9000.
 - Não há testes (`src/test` não existe).
 - `ipLocal` (query param e campo de `SensorDTO`) é aceito mas ignorado — usuário decidiu manter e só documentar.
@@ -125,12 +128,12 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
 - Script de automação (preparação do servidor) existe **isolado** na branch local `automacao-instalacao` (commit `6babd57`, não validado, sem push): manter isolado do projeto — **nunca** referenciá-lo em README/docs/commits da `main`; retomar só a pedido do usuário, depois de validada a instalação manual.
 - Servidor: NSSM em `C:\Program Files\nssm` (não winget); projeto em `C:\sensor-rfid`; regra de firewall `API RFID 8080`; VS Code em cada servidor; `sensors.json` continua dentro do jar (editar e recompilar manualmente).
 - Tutorial de instalação deve continuar **simples** (sem seções de validação/solução de problemas).
-- Push da `main` só **depois** de validar o tutorial de 13 passos em outra máquina. A `main` local está à frente do `origin/main` só com commits de docs; o código no GitHub é o mesmo → clonar para o teste é ok.
+- Push da `main` só depois de validar o tutorial de 13 passos em outra máquina → validado em 29/10/2026, **push liberado**.
 
 ## Fluxo de trabalho
 
 - Commits direto na `main` (sem PR), mensagem no estilo `tipo: descrição` em português.
-- O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`. Em 14/10/2026 a `main` local está **à frente** do `origin/main` só com commits de docs (`4da3fea`, `180debd`, `f66956e`, `b06260f`, `8c9c0fd` e o desta atualização) → **push pendente** até o usuário validar o tutorial de 13 passos (ver decisões).
+- O Claude não consegue dar push (sem credenciais do GitHub no shell): faça o commit e peça ao usuário para rodar `git push origin main`. Em 29/10/2026 o usuário está fazendo o push dos commits de docs até este (inclusive), após validar o tutorial de 13 passos.
 - Sempre validar com build e execução reais.
 - Máquina de dev Windows anterior (sessões até 13/10/2026): JDK 17 (Temurin 17.0.20.1, via winget) em `C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot` → build e execução locais funcionavam. Ela **não alcançava** a rede Wi-Fi dos sensores; a VPN alcançava só servidores `10.120.x`, que rodam a versão implantada (não usar para validar builds novos).
 - **Máquina de teste Windows 11** (atual, desde 14/10/2026; **não é o servidor final**): plano é validar tudo aqui e depois adaptar o projeto em **outra máquina Windows** que será o servidor. Tem **um adaptador Wi-Fi** ("Wi-Fi 4", IP `192.168.5.2`) ligado ao AP do sensor 5 → alcança só `192.168.5.1:8005`; um sensor por vez (os demais aparecem como ERRO no `/testar-todos`, esperado). Setup em "Já feito" (sessão de 14/10/2026).
@@ -159,4 +162,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 14 de outubro de 2026 (tutorial simplificado em 13 passos; push após validação)
+Última atualização: 29 de outubro de 2026 (tutorial de 13 passos validado; push)
