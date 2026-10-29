@@ -50,10 +50,11 @@ Use uma conta administrador; o projeto fica em `C:\sensor-rfid` e a API responde
     Depois, pare a API com **Ctrl+C** no primeiro PowerShell.
     > Se o Windows perguntar sobre o Java no firewall, clique em **Permitir**.
 
-11. Instale e inicie o serviço; confira com `Get-Service sensor-rfid` (deve mostrar `Running`):
+11. Instale e inicie o serviço; confira com `nssm status sensor-rfid` (deve mostrar `SERVICE_RUNNING`) ou `Get-Service sensor-rfid` (deve mostrar `Running`):
     ```powershell
     powershell -ExecutionPolicy Bypass -File .\deploy\instalar-servico-windows.ps1
     nssm start sensor-rfid
+    nssm status sensor-rfid
     ```
 
 12. Libere a porta 8080 no firewall:
@@ -68,7 +69,7 @@ Use uma conta administrador; o projeto fica em `C:\sensor-rfid` e a API responde
 
 ## Comandos úteis
 
-- Serviço: `nssm start sensor-rfid`, `nssm stop sensor-rfid`, `nssm restart sensor-rfid`.
+- Serviço: `nssm status sensor-rfid`, `nssm start sensor-rfid`, `nssm stop sensor-rfid`, `nssm restart sensor-rfid`.
 - Log: `C:\sensor-rfid\logs\servico.log`.
 - Alterar sensores: edite o `sensors.json` → `nssm stop sensor-rfid` → `.\mvnw.cmd clean package` → `nssm start sensor-rfid`.
 - Atualizar o código: rode `git pull` antes de compilar (mesma sequência acima).
