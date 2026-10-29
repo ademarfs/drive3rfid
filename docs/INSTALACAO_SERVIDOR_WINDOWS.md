@@ -5,14 +5,22 @@ Use uma conta administrador; o projeto fica em `C:\sensor-rfid` e a API responde
 1. Instale o VS Code: baixe o **System Installer x64** em <https://code.visualstudio.com/download> e deixe marcado **"Adicionar ao PATH"**.
 
 2. Instale o Java 17 (Eclipse Temurin, `.msi`): <https://adoptium.net/temurin/releases/?version=17&os=windows&arch=x64&package=jdk>. No instalador, ative **"Set JAVA_HOME variable"**.
-   > Confira com `java -version` (deve mostrar 17; se mostrar 1.8, mova o JDK 17 para o topo do `Path` do sistema).
+   Garanta o `JAVA_HOME` (sem ele, a compilação falha), no PowerShell como administrador:
+   ```powershell
+   $jdk = (Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory -Filter 'jdk-17*' | Select-Object -First 1).FullName
+   [Environment]::SetEnvironmentVariable('JAVA_HOME', $jdk, 'Machine')
+   ```
+   > Confira em um PowerShell novo com `java -version` (deve mostrar 17) e `$env:JAVA_HOME`; se `java -version` mostrar 1.8, mova o JDK 17 para o topo do `Path` do sistema.
 
 3. Instale o Git: <https://git-scm.com/download/win> (opções padrão).
 
-4. Instale o NSSM: baixe <https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip>, copie `win64\nssm.exe` para `C:\Program Files\nssm` e adicione essa pasta ao `Path` do sistema.
+4. Instale o NSSM: baixe <https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip>, crie a pasta `C:\Program Files\nssm` e copie para ela **só o arquivo** `nssm.exe` da pasta `win64` do zip. Resultado: `C:\Program Files\nssm\nssm.exe` (não `...\nssm\win64\nssm.exe`). Depois adicione `C:\Program Files\nssm` ao `Path` **do sistema** (em "Variáveis do sistema", não nas do usuário).
    > Não use o winget para o NSSM.
 
-5. Feche e abra o PowerShell **como administrador** (para carregar o novo `Path`).
+5. Feche e abra o PowerShell **como administrador** (para carregar o novo `Path`). Confira (deve mostrar `C:\Program Files\nssm\nssm.exe`):
+   ```powershell
+   (Get-Command nssm).Source
+   ```
 
 6. Clone o repositório:
    ```powershell
