@@ -105,6 +105,8 @@ Vantagens:
 - Reinicia sozinho em caso de falha (após 10 s)
 - Não precisa de ninguém logado
 
+Passo a passo completo (Ubuntu/Debian): [docs/INSTALACAO_SERVIDOR_LINUX.md](docs/INSTALACAO_SERVIDOR_LINUX.md).
+
 1. Edite `deploy/sensor-rfid.service` e ajuste `User`, `WorkingDirectory` e `ExecStart` para o usuário e a pasta do projeto na máquina (os caminhos que vêm no arquivo são apenas de exemplo).
 2. Instale e ative:
 ```bash

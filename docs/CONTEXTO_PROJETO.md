@@ -32,6 +32,8 @@ Refatorar para rodar em **servidor fraco** (pouca RAM/CPU). A máquina ainda est
 
 Suportar **Linux e Windows**. A adaptação para Windows está pronta e **validada com sensor real** (14/10/2026) numa **máquina de teste Windows 11** (não é o servidor final). O tutorial de instalação de 13 passos (`docs/INSTALACAO_SERVIDOR_WINDOWS.md`) foi **validado em outra máquina Windows** (29/10/2026). Falta testar com os 6 sensores (não relatado).
 
+No Linux, o tutorial de instalação de 11 passos (`docs/INSTALACAO_SERVIDOR_LINUX.md`, serviço systemd) está escrito, mas **pendente de validação** no notebook Linux de teste.
+
 ## Já feito
 
 - `f921893` — sensores 5 e 6 no `sensors.json` e `CLAUDE.md`.
@@ -95,11 +97,17 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
   - `/sensor/testar-todos` via serviço: `192.168.5.1:8005` OK com 9 tags reais (Setor 05); demais sensores ERRO por timeout (não conectados nessa máquina).
   - Nessa máquina o JDK 17 está instalado por usuário em `C:\Users\ademar.silva\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.20.101-hotspot` (o instalador do serviço grava o caminho completo do `java`, então funciona como LocalSystem).
   - Cuidado: JDK por usuário depende desse perfil de usuário existir/estar acessível; o caminho do tutorial é a instalação para a máquina toda (`.msi`).
+- Commit do tutorial Linux — `docs/INSTALACAO_SERVIDOR_LINUX.md`: tutorial de **11 passos** para Ubuntu/Debian com desktop; serviço systemd usando `deploy/sensor-rfid.service` copiado para `/etc/systemd/system` e ajustado por `sed` com `$USER`/`$HOME` (o arquivo do repositório não muda).
+  - Pasta **provisória** `~/Downloads/rfid/drive3rfid` (notebook Linux de teste; pasta do servidor final a confirmar), destacada no topo do tutorial.
+  - Versão HTML publicada como artifact privado no claude.ai (https://claude.ai/artifact/NMNLmnkTqqsqm4CSX1Md82); não está no repositório.
+  - README (Opção 3) ganhou link para o tutorial.
+  - **Não validado**: falta o usuário seguir o tutorial no notebook Linux e reiniciar a máquina.
 
 ## Próximo passo sugerido
 
-1. Corrigir o bug do NPE no `/testar-todos` (ver pendências).
-2. Revisar "Problemas conhecidos / pendências" com o usuário.
+1. Validar o tutorial Linux no notebook de teste (reiniciar e conferir /testar-todos sem abrir o VS Code).
+2. Corrigir o bug do NPE no `/testar-todos` (ver pendências).
+3. Revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
 
@@ -169,4 +177,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 29 de outubro de 2026 (tutorial de 13 passos validado; merge com f1ebe3a; push)
+Última atualização: 17 de novembro de 2026 (tutorial Linux)
