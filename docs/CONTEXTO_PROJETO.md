@@ -99,8 +99,7 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
 ## Próximo passo sugerido
 
 1. Corrigir o bug do NPE no `/testar-todos` (ver pendências).
-2. Depois, se o usuário quiser, retomar o script de automação da branch `automacao-instalacao` (atualizá-lo para bater com o tutorial validado).
-3. Revisar "Problemas conhecidos / pendências" com o usuário.
+2. Revisar "Problemas conhecidos / pendências" com o usuário.
 
 ## Problemas conhecidos / pendências
 
@@ -131,7 +130,7 @@ Suportar **Linux e Windows**. A adaptação para Windows está pronta e **valida
 - Manter suporte aos dois SOs (Linux e Windows); serviço Windows via **NSSM**.
 - Commitar a limpeza de código morto antes de validá-la em sensor real (validação fica para o teste na empresa).
 - A instalação do servidor será feita e validada **manualmente** primeiro, usando só o `docs/INSTALACAO_SERVIDOR_WINDOWS.md`, em outra máquina/local.
-- Script de automação (preparação do servidor) existe **isolado** na branch local `automacao-instalacao` (commit `6babd57`, não validado, sem push): manter isolado do projeto — **nunca** referenciá-lo em README/docs/commits da `main`; retomar só a pedido do usuário, depois de validada a instalação manual.
+- Instalação do servidor: **só a manual**, passo a passo, conforme `docs/INSTALACAO_SERVIDOR_WINDOWS.md` (decisão de 17/11/2026). Instalação automatizada descartada; não propor nem retomar.
 - Servidor: NSSM em `C:\Program Files\nssm` (não winget); projeto em `C:\sensor-rfid`; regra de firewall `API RFID 8080`; VS Code em cada servidor; `sensors.json` continua dentro do jar (editar e recompilar manualmente).
 - Tutorial de instalação deve continuar **simples** (sem seções de validação/solução de problemas).
 - Push da `main` só depois de validar o tutorial de 13 passos em outra máquina → validado em 29/10/2026, **push liberado**.
