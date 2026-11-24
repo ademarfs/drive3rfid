@@ -7,7 +7,7 @@
 - **SensorSerialYan**: API REST *stateless* que lê tags RFID de leitores **Fonkan FI-801** via socket TCP (sobre Wi-Fi) e associa cada tag ao **setor** do leitor.
 - Stack: Java 17, Spring Boot 3.5.5, Maven (`./mvnw`), pacote `org.Yan`, jar `target/SensorSerialYan-1.0-SNAPSHOT.jar`, porta 8080.
 - Rede: cada sensor cria seu próprio ponto de acesso Wi-Fi; o servidor tem **um adaptador Wi-Fi por sensor**. Cada sensor tem IP/porta distintos (ex.: `192.168.5.1:8005`, `192.168.6.1:8006`).
-- `src/main/resources/sensors.json`: lista de `{ip, porta, nome, setor}` com **6 sensores** (Setor 01–06). Fica **dentro do jar** → ao editar, é preciso `./mvnw clean package` e reiniciar.
+- `src/main/resources/sensors.json`: lista de `{ip, porta, nome, setor}` com **6 sensores**; o campo `setor` traz os nomes reais dos setores (MM, PLANA, RET. CILIN, EROSAO, CFN, SALA FRIA). Fica **dentro do jar** → ao editar, é preciso `./mvnw clean package` e reiniciar.
 - Endpoints (`/sensor`, `@CrossOrigin("*")`):
   - `GET /sensor/tags/{ip}/{porta}` → lista de `{tag, setor}`
   - `GET /sensor/tags/{ip}/{porta}/{tagId}` → `{tag, setor}`
