@@ -103,6 +103,13 @@ No Linux, o tutorial de instalação de 11 passos (`docs/INSTALACAO_SERVIDOR_LIN
   - README (Opção 3) ganhou link para o tutorial.
   - **Não validado**: falta o usuário seguir o tutorial no notebook Linux e reiniciar a máquina.
 
+- Sessão de 24–25/11/2026 — documentação para comunicação (gerada **só localmente**, não versionada por conter informações sensíveis):
+  - `docs/MUDANCAS_TECNICAS_2026-10_2026-11.pdf`: documentação técnica das mudanças (commits, diagramas de arquitetura, antes × depois, validação e pendências).
+  - `docs/RESUMO_MELHORIAS_RFID.pdf`: resumo de 1 página para leigos, com ilustração do fluxo e dos 6 setores.
+  - `docs/DOCUMENTACAO_TECNICA_DRIVE.md` / `.pdf` (+ `docs/img/arquitetura.svg`): documentação técnica no modelo padrão da empresa (6 seções). Autor: Yan Carvalho; mantenedor: Ademar Ferreira.
+  - PDFs gerados a partir de HTML com o Edge headless (`msedge --headless=new --print-to-pdf`); o `.md` é convertido com o pacote Python `markdown`.
+  - Também foram redigidos (só no chat) dois textos de e-mail (misto e leigo) e um cronograma jan–nov/2026.
+
 ## Próximo passo sugerido
 
 1. Validar o tutorial Linux no notebook de teste (reiniciar e conferir /testar-todos sem abrir o VS Code).
@@ -143,6 +150,7 @@ No Linux, o tutorial de instalação de 11 passos (`docs/INSTALACAO_SERVIDOR_LIN
 - Tutorial de instalação deve continuar **simples** (sem seções de validação/solução de problemas).
 - Push da `main` só depois de validar o tutorial de 13 passos em outra máquina → validado em 29/10/2026, **push liberado**.
 - Endereços dos sensores 1 e 2 (`192.168.2.1:8000` e `192.168.20.1:9000`) ficam fora do padrão `192.168.N.1:800N` **de propósito** — decisão do usuário em 29/10/2026; não "corrigir".
+- Documentações de comunicação (PDFs, `DOCUMENTACAO_TECNICA_DRIVE.*`, `docs/img/`) ficam **só locais**, fora do git, por conter informações sensíveis — decisão de 25/11/2026; não commitar.
 
 ## Fluxo de trabalho
 
@@ -177,4 +185,4 @@ curl.exe http://localhost:8080/sensor/tags/192.168.5.1/8005
 Get-Process java | Select-Object Id, @{n='RAM_MB';e={[int]($_.WorkingSet64/1MB)}}
 ```
 
-Última atualização: 17 de novembro de 2026 (tutorial Linux)
+Última atualização: 25 de novembro de 2026 (documentação para comunicação, mantida só localmente)
